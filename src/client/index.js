@@ -132,9 +132,11 @@ const zh = {
   'workStartField': '上班时间',
   'workEndField': '下班时间',
   'lunchEnabledField': '启用午休',
+  'lunchEnabledShort': '启用',
   'lunchStartField': '午休开始',
   'lunchEndField': '午休结束',
   'lunchPaidField': '午休算工时',
+  'lunchPaidShort': '算工时',
   'holidaysCardTitle': '节假日安排',
   'holidays2026Label': '2026 年（官方）',
   'holidays2027Label': '2027 年（预估）',
@@ -230,9 +232,11 @@ const en = {
   'workStartField': 'Work start',
   'workEndField': 'Work end',
   'lunchEnabledField': 'Enable lunch break',
+  'lunchEnabledShort': 'On',
   'lunchStartField': 'Lunch start',
   'lunchEndField': 'Lunch end',
   'lunchPaidField': 'Lunch is paid',
+  'lunchPaidShort': 'Paid',
   'holidaysCardTitle': 'Holiday calendar',
   'holidays2026Label': '2026 (official)',
   'holidays2027Label': '2027 (estimated)',
@@ -876,14 +880,14 @@ function SettingsSection(props) {
     minHeight: 33, padding: '2px 0', borderTop: `1px solid ${C.border1}`,
   };
   const rowKeyStyle = { width: 62, flex: '0 0 62px', fontSize: 11.5, color: C.label3 };
-  const rowValStyle = { display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', minWidth: 0 };
+  const rowValStyle = { display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', minWidth: 0 };
   const inputStyle = {
     boxSizing: 'border-box', width: 88, minHeight: 28, padding: '4px 8px',
     borderRadius: 7, border: `1px solid ${C.border}`, background: C.layer2,
     color: C.label, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', outline: 'none',
   };
   const selectStyle = {
-    boxSizing: 'border-box', width: 42, minHeight: 28, padding: '4px 1px 4px 4px',
+    boxSizing: 'border-box', width: 40, minHeight: 28, padding: '4px 1px 4px 4px',
     borderRadius: 7, border: `1px solid ${C.border}`, background: C.layer2,
     color: C.label, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', outline: 'none', cursor: 'pointer',
   };
@@ -932,7 +936,7 @@ function SettingsSection(props) {
       display: 'inline-flex', alignItems: 'center', gap: 5,
       padding: '2px 6px', borderRadius: 8,
       border: `1px solid ${C.border1}`, background: C.layer2,
-      fontSize: 11, color: disabled ? C.label3 : C.label2, whiteSpace: 'nowrap',
+      fontSize: 10.5, color: disabled ? C.label3 : C.label2, whiteSpace: 'nowrap',
       cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.55 : 1,
     },
   }, [
@@ -966,10 +970,10 @@ function SettingsSection(props) {
         timeRange('workStart', 'workEnd', t('groupWorkTime'), false),
       ]),
       row('lunch', t('groupLunch'), [
-        // 两个开关放一起；窄面板换行时是「开关一行、时间一行」，不会出现单个控件孤零零掉到下一行
-        toggle('lunchEnabled', 'lunchEnabledField', false),
-        toggle('lunchPaid', 'lunchPaidField', lunchDisabled),
+        // 时间在前、两个开关在后（放到行尾）
         timeRange('lunchStart', 'lunchEnd', t('groupLunch'), lunchDisabled),
+        toggle('lunchEnabled', 'lunchEnabledShort', false),
+        toggle('lunchPaid', 'lunchPaidShort', lunchDisabled),
       ]),
     ]),
     React.createElement('div', {
