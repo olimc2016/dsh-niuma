@@ -883,9 +883,25 @@ function SettingsSection(props) {
       key: 'i',
       type: 'text',
       value: form[field],
-      placeholder: placeholder || 'HH:mm',
+      placeholder: placeholder || '',
       onChange: (event) => setField(field, event.target.value),
       style: inputStyle,
+    }),
+  ]);
+
+  /** 时间字段：用原生 time 输入，点输入框/时钟图标即可用鼠标选择（同时也支持键盘输入 HH:mm）。 */
+  const timeField = (field, labelKey) => React.createElement('label', {
+    key: field,
+    style: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 112 },
+  }, [
+    React.createElement('span', { key: 'l', style: labelStyle }, t(labelKey)),
+    React.createElement('input', {
+      key: 'i',
+      type: 'time',
+      step: 60,
+      value: form[field],
+      onChange: (event) => setField(field, event.target.value),
+      style: { ...inputStyle, minHeight: 32 },
     }),
   ]);
 
@@ -915,22 +931,14 @@ function SettingsSection(props) {
       style: { cursor: 'pointer', fontSize: 13, fontWeight: 650, color: C.label, userSelect: 'none' },
     }, t('settings')),
     React.createElement('div', {
-      key: 'hint',
-      style: { fontSize: 10.5, color: C.label3, margin: '5px 0 10px' },
-    }, t('settingsHint')),
-    React.createElement('div', {
-      key: 'dataNote',
-      style: { fontSize: 10.5, color: C.label3, margin: '-4px 0 10px', lineHeight: 1.55 },
-    }, t('settingsDataNote')),
-    React.createElement('div', {
       key: 'fields',
       style: { display: 'flex', flexWrap: 'wrap', gap: 9 },
     }, [
       textField('monthlySalary', 'salaryField', '10000'),
-      textField('workStart', 'workStartField', '09:00'),
-      textField('workEnd', 'workEndField', '18:00'),
-      textField('lunchStart', 'lunchStartField', '12:00'),
-      textField('lunchEnd', 'lunchEndField', '13:00'),
+      timeField('workStart', 'workStartField'),
+      timeField('workEnd', 'workEndField'),
+      timeField('lunchStart', 'lunchStartField'),
+      timeField('lunchEnd', 'lunchEndField'),
       checkField('lunchEnabled', 'lunchEnabledField'),
       checkField('lunchPaid', 'lunchPaidField'),
     ]),
