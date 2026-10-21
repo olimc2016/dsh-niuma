@@ -117,6 +117,7 @@ const t = (key) => (dictionary?.zh?.[key] != null ? dictionary.zh[key] : key);
 /* ------------------------------ 渲染整棵树 ------------------------------ */
 const problems = [];
 let visited = 0;
+let rootStyle = null;
 const texts = [];
 const anchors = [];
 const dataStats = [];
@@ -129,6 +130,7 @@ const walk = (node) => {
   visited += 1;
   const type = node.type;
   const props = node.props || {};
+  if (visited === 1) rootStyle = props.style || {};
 
   if (type === 'a' && typeof props.href === 'string') anchors.push(props.href);
   if (typeof props['data-stat'] === 'string') dataStats.push(props['data-stat']);
@@ -175,6 +177,14 @@ expectText('距下班 4小时 30分', '4小时 30分');
 expectText('设置区', '实收月薪（元/月）');
 expectText('保存按钮', '保存');
 expectText('节假日数据来源文案', '国务院办公厅 2026 年节假日安排');
+
+// 根容器必须是滚动容器：DSH main slot 给的是定高容器，插件不自带滚动条时展开设置会被裁掉
+//（真实反馈：Windows/桌面端展开设置后底部保存按钮看不到、也没有滚动条）。
+const scrollOk = rootStyle
+  && rootStyle.height === '100%'
+  && (rootStyle.overflowY === 'auto' || rootStyle.overflow === 'auto');
+console.log(`根容器滚动: height=${JSON.stringify(rootStyle?.height)} overflowY=${JSON.stringify(rootStyle?.overflowY)} -> ${scrollOk ? 'PASS' : 'FAIL'}`);
+if (!scrollOk) problems.push('根容器缺 height:100% + overflow 滚动');
 
 // 六宫格：6 张卡片都渲染了（data-stat 属性）
 const statsOk = dataStats.length === 6 && new Set(dataStats).size === 6;

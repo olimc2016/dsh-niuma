@@ -1012,13 +1012,22 @@ function NiumaPanel(props) {
 
   return React.createElement('div', {
     style: {
+      // DSH 的 main slot 给的是定高容器：插件必须自己当滚动容器，否则展开设置后底部会被裁掉
+      //（与 dsh-token-meter-panel / dsh-worktodo 的根容器同一套写法：height:100% + overflow:auto）。
+      height: '100%',
+      width: '100%',
+      maxWidth: 820,
+      margin: '0 auto',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      overscrollBehavior: 'contain',
+      scrollbarGutter: 'stable',
+      boxSizing: 'border-box',
       display: 'flex',
       flexDirection: 'column',
       gap: 11,
       minWidth: 0,
-      maxWidth: 760,
-      margin: '0 auto',
-      padding: '4px 2px 18px',
+      padding: '16px 18px 40px',
       fontSize: 13,
       lineHeight: 1.45,
       color: C.label,

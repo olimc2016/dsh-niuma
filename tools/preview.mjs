@@ -26,6 +26,9 @@ const open = args.includes('--open');
 const screenshotIndex = args.indexOf('--screenshot');
 const screenshotPath = screenshotIndex >= 0 ? args[screenshotIndex + 1] : null;
 const expand = args.includes('--expand');
+const dshViewport = args.includes('--dsh');
+const scrollIndex = args.indexOf('--scroll');
+const scrollTo = scrollIndex >= 0 ? String(args[scrollIndex + 1] || '') : '';
 const viewIndex = args.indexOf('--view');
 const initialView = viewIndex >= 0 ? String(args[viewIndex + 1] || 'current') : 'current';
 
@@ -106,7 +109,7 @@ function themeVars(record) {
     .join('\n      ');
 }
 
-function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView) {
+function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView, dshViewport, scrollTo) {
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -117,6 +120,7 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView) {
   body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
   .stage { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; align-items: flex-start; }
   .pane { flex: 1 1 420px; max-width: 640px; border-radius: 16px; overflow: hidden; padding: 20px; }
+  .viewport { height: 980px; overflow: hidden; border-radius: 12px; }
   .pane-title { font: 600 12px/1.4 sans-serif; opacity: .55; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
   #root-light, #root-dark { min-height: 200px; }
 </style>
@@ -125,11 +129,11 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView) {
 <div class="stage">
   <div class="pane" id="pane-light" style="color-scheme: light; ${themeVars(LIGHT)}">
     <div class="pane-title" style="color:#5a6472">LIGHT THEME</div>
-    <div id="root-light"></div>
+    <div class="viewport" id="viewport-light"><div id="root-light" style="height:100%"></div></div>
   </div>
   <div class="pane" id="pane-dark" style="color-scheme: dark; ${themeVars(DARK)}">
     <div class="pane-title" style="color:#8a94a6">DARK THEME</div>
-    <div id="root-dark"></div>
+    <div class="viewport" id="viewport-dark"><div id="root-dark" style="height:100%"></div></div>
   </div>
 </div>
 <script>
@@ -156,6 +160,8 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView) {
   const ReactDOM = window.ReactDOM;
   const EXPAND = ${expand ? 'true' : 'false'};
   const INITIAL_VIEW = ${JSON.stringify(initialView)};
+  const DSH_VIEWPORT = ${dshViewport ? 'true' : 'false'};
+  const SCROLL_TO = ${JSON.stringify(scrollTo)};
   const ZH = (key) => key;
   function mount(rootId) {
     const root = ReactDOM.createRoot(document.getElementById(rootId));
@@ -182,6 +188,15 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView) {
     const t = (key) => (zh[key] == null ? ZH(key) : zh[key]);
     root.render(React.createElement(main.component, { t, locale: 'zh' }));
     if (EXPAND) setTimeout(() => { document.querySelectorAll('details').forEach((d) => { d.open = true; }); }, 60);
+    if (SCROLL_TO === 'bottom') {
+      setTimeout(() => {
+        ['root-light', 'root-dark'].forEach((id) => {
+          const host = document.getElementById(id);
+          const panel = host && host.firstElementChild;
+          if (panel) panel.scrollTop = panel.scrollHeight;
+        });
+      }, 220);
+    }
     if (INITIAL_VIEW && INITIAL_VIEW !== 'current') {
       setTimeout(() => {
         // 浅色/深色两个根各挂了一份面板：两个 select 都要切，否则截图两边状态不一致
@@ -210,7 +225,7 @@ const bundle = readFileSync(join(repo, 'lib', 'client.js'), 'utf8');
 const outDir = join(tmpdir(), `dsh-niuma-preview-${process.pid}`);
 mkdirSync(outDir, { recursive: true });
 const htmlPath = join(outDir, 'index.html');
-writeFileSync(htmlPath, buildHtml(react.react, react.reactDom, bundle, expand, initialView));
+writeFileSync(htmlPath, buildHtml(react.react, react.reactDom, bundle, expand, initialView, dshViewport, scrollTo));
 console.log(`preview: file://${htmlPath}`);
 
 if (screenshotPath) {
