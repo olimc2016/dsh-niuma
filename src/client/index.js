@@ -873,20 +873,20 @@ function SettingsSection(props) {
   const inputStyle = {
     width: '100%',
     boxSizing: 'border-box',
-    padding: '7px 10px',
-    borderRadius: 9,
+    padding: '5px 9px',
+    borderRadius: 8,
     border: `1px solid ${C.border}`,
     background: C.layer2,
     color: C.label,
     fontSize: 13,
     fontVariantNumeric: 'tabular-nums',
     outline: 'none',
-    minHeight: 34,
+    minHeight: 30,
   };
   const labelStyle = { fontSize: 10.5, color: C.label3, fontWeight: 500, marginBottom: 1 };
-  const groupStyle = { display: 'grid', gap: 8 };
+  const groupStyle = { display: 'grid', gap: 6 };
   const groupTitleStyle = { fontSize: 10.5, fontWeight: 700, color: C.label3, letterSpacing: '.4px', textTransform: 'uppercase' };
-  const pairStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 };
+  const pairStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 };
 
   /** 实收月薪：输入框右侧常驻单位「元 / 月」。 */
   const salaryField = () => React.createElement('label', {
@@ -925,8 +925,8 @@ function SettingsSection(props) {
     const commit = (nextHour, nextMinute) => setField(field, `${nextHour}:${nextMinute}`);
     const selectStyle = {
       ...inputStyle,
-      padding: '6px 6px',
-      minHeight: 32,
+      padding: '4px 6px',
+      minHeight: 30,
       cursor: disabled ? 'default' : 'pointer',
       opacity: disabled ? 0.45 : 1,
     };
@@ -935,7 +935,7 @@ function SettingsSection(props) {
       style: { display: 'grid', gap: 4, opacity: disabled ? 0.75 : 1 },
     }, [
       React.createElement('span', { key: 'l', style: labelStyle }, t(labelKey)),
-      React.createElement('div', { key: 'row', style: { display: 'flex', alignItems: 'center', gap: 5, maxWidth: 170 } }, [
+      React.createElement('div', { key: 'row', style: { display: 'flex', alignItems: 'center', gap: 4, maxWidth: 158 } }, [
         React.createElement('select', {
           key: 'h',
           value: hour,
@@ -962,7 +962,7 @@ function SettingsSection(props) {
     key: field,
     style: {
       display: 'inline-flex', alignItems: 'center', gap: 7,
-      padding: '6px 10px', borderRadius: 9,
+      padding: '4px 9px', borderRadius: 9,
       border: `1px solid ${C.border1}`, background: C.layer2,
       fontSize: 12, color: disabled ? C.label3 : C.label2,
       cursor: disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
@@ -985,7 +985,7 @@ function SettingsSection(props) {
     key,
     style: {
       ...groupStyle,
-      ...(divided ? { paddingTop: 11, borderTop: `1px solid ${C.border1}` } : {}),
+      ...(divided ? { paddingTop: 8, borderTop: `1px solid ${C.border1}` } : {}),
     },
   }, [
     React.createElement('div', { key: 'title', style: groupTitleStyle }, title),
@@ -994,13 +994,13 @@ function SettingsSection(props) {
 
   return React.createElement('details', {
     open: true,
-    style: { background: C.layer1, border: `1px solid ${C.border1}`, borderRadius: 12, padding: '12px 14px' },
+    style: { background: C.layer1, border: `1px solid ${C.border1}`, borderRadius: 12, padding: '10px 12px' },
   }, [
     React.createElement('summary', {
       key: 'sum',
-      style: { cursor: 'pointer', fontSize: 13, fontWeight: 650, color: C.label, userSelect: 'none' },
+      style: { cursor: 'pointer', fontSize: 12.5, fontWeight: 650, color: C.label, userSelect: 'none' },
     }, t('settings')),
-    React.createElement('div', { key: 'body', style: { display: 'grid', gap: 12, marginTop: 10 } }, [
+    React.createElement('div', { key: 'body', style: { display: 'grid', gap: 9, marginTop: 8 } }, [
       group('salary', t('groupSalary'), [salaryField()], false),
       group('worktime', t('groupWorkTime'), [
         React.createElement('div', { key: 'pair', style: pairStyle }, [
@@ -1023,7 +1023,7 @@ function SettingsSection(props) {
       key: 'actions',
       style: {
         display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        marginTop: 13, paddingTop: 11, borderTop: `1px solid ${C.border1}`,
+        marginTop: 9, paddingTop: 8, borderTop: `1px solid ${C.border1}`,
       },
     }, [
       save.status === 'ok'
@@ -1051,7 +1051,7 @@ function SettingsSection(props) {
             ? `color-mix(in srgb, ${GOLD_TINT} 52%, #fff)`
             : 'linear-gradient(180deg, #F8DC86 0%, #EFC258 52%, #D99D2C 100%)',
           borderRadius: 9,
-          padding: '8px 22px',
+          padding: '6px 18px',
           fontSize: 13,
           fontWeight: 700,
           letterSpacing: '.3px',
