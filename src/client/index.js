@@ -1009,11 +1009,12 @@ function NiumaPanel(props) {
   let viewHint;
   let viewNote;
   if (view === 'year') {
+    // 与「本月」保持同一阅读顺序：秒 → 分 → 时 → 日，再放该视角的汇总项
     viewCards = [
-      { key: 'avgDaily', label: t('averageDaily'), value: money(yearData.averageDailyWage, 2), accent: true },
-      { key: 'avgHourly', label: t('averageHourly'), value: money(yearData.averageHourlyWage, 2) },
+      { key: 'avgSecond', label: t('averageSecond'), value: money(yearData.averageSecondWage, 4), accent: true },
       { key: 'avgMinute', label: t('averageMinute'), value: money(yearData.averageMinuteWage, 4) },
-      { key: 'avgSecond', label: t('averageSecond'), value: money(yearData.averageSecondWage, 4) },
+      { key: 'avgHourly', label: t('averageHourly'), value: money(yearData.averageHourlyWage, 2) },
+      { key: 'avgDaily', label: t('averageDaily'), value: money(yearData.averageDailyWage, 2) },
       { key: 'yearWorkdays', label: t('yearWorkdays'), value: `${yearData.totalWorkdays}${t('dayUnit')}` },
       { key: 'yearIncome', label: t('yearIncome'), value: money(yearData.annualIncome, 2) },
     ];
@@ -1021,12 +1022,13 @@ function NiumaPanel(props) {
       + (yearEstimated ? ` · ${t('holidayEstimateShort')}` : '');
     viewNote = yearEstimated ? t('holidayEstimateNote') : maxHolidayText;
   } else if (selectedMonth) {
+    // 与「本月」保持同一阅读顺序：秒 → 分 → 时 → 日 → 月 → 工作日
     viewCards = [
-      { key: 'monthlyWage', label: t('monthlyWage'), value: money(selectedMonth.monthlySalary, 2) },
-      { key: 'dailyWage', label: t('dailyWage'), value: money(selectedMonth.dailyWage, 2), accent: true },
-      { key: 'hourlyWage', label: t('hourlyWage'), value: money(selectedMonth.hourlyWage, 2) },
+      { key: 'secondWage', label: t('secondWage'), value: money(selectedMonth.secondWage, 4), accent: true },
       { key: 'minuteWage', label: t('minuteWage'), value: money(selectedMonth.minuteWage, 4) },
-      { key: 'secondWage', label: t('secondWage'), value: money(selectedMonth.secondWage, 4) },
+      { key: 'hourlyWage', label: t('hourlyWage'), value: money(selectedMonth.hourlyWage, 2) },
+      { key: 'dailyWage', label: t('dailyWage'), value: money(selectedMonth.dailyWage, 2) },
+      { key: 'monthlyWage', label: t('monthlyWage'), value: money(selectedMonth.monthlySalary, 2) },
       { key: 'monthWorkdays', label: t('monthWorkdaysCard'), value: `${selectedMonth.workdays}${t('dayUnit')}` },
     ];
     viewHint = `${t('monthHint')
@@ -1041,6 +1043,7 @@ function NiumaPanel(props) {
         ? `★ ${t('maxHolidayThis').replace('{days}', String(maxHolidayMonth.holidayDays))}`
         : maxHolidayText);
   } else {
+    // 统一阅读顺序：秒 → 分 → 时 → 日 → 周 → 月（所有视角都从「秒」开始、从小到大）
     viewCards = RATE_CARDS.map((spec) => ({
       key: spec.key,
       label: t(spec.label),
