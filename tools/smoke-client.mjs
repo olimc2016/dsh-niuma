@@ -158,7 +158,8 @@ const dynamicKeys = [
   'statusRest', 'statusBefore', 'statusWorking', 'statusLunch', 'statusOff',
   'secondWage', 'minuteWage', 'hourlyWage', 'dailyWage', 'weeklyWage', 'monthlyWage',
   'salaryField', 'workStartField', 'workEndField', 'lunchStartField', 'lunchEndField',
-  'lunchEnabledField', 'lunchPaidField', 'holidaysField', 'extraWorkdaysField',
+  'lunchEnabledField', 'lunchPaidField',
+  'holidays2026Label', 'holidays2027Label', 'holidayEstimateTag', 'holidayEstimateNote', 'settingsDataNote',
 ];
 const requiredKeys = [...new Set([...literalKeys, ...dynamicKeys])];
 const missingZh = requiredKeys.filter((k) => !zhKeys.has(k));

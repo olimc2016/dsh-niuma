@@ -116,7 +116,6 @@ const zh = {
   'paidHoursPerDay': '日有效工时',
   'todayTarget': '今日目标',
   'monthEarned': '本月已赚',
-  'holidaySource': '节假日来源',
   'holidaySourceLink': '国务院办公厅 2026 年节假日安排',
   'configLoading': '正在读取设置…',
   'configFailed': '设置读取失败，使用默认值',
@@ -130,9 +129,6 @@ const zh = {
   'lunchStartField': '午休开始',
   'lunchEndField': '午休结束',
   'lunchPaidField': '午休算工时',
-  'holidaysField': '节假日（一行一个 YYYY-MM-DD）',
-  'extraWorkdaysField': '调休上班日（一行一个 YYYY-MM-DD）',
-  'itemsCount': '{n} 条',
   'holidaysCardTitle': '节假日安排',
   'holidays2026Label': '2026 年（官方）',
   'holidays2027Label': '2027 年（预估）',
@@ -211,7 +207,6 @@ const en = {
   'paidHoursPerDay': 'Paid hours / day',
   'todayTarget': "Today's target",
   'monthEarned': 'Earned this month',
-  'holidaySource': 'Holiday data',
   'holidaySourceLink': 'State Council 2026 holiday schedule',
   'configLoading': 'Loading settings…',
   'configFailed': 'Failed to load settings, using defaults',
@@ -225,9 +220,6 @@ const en = {
   'lunchStartField': 'Lunch start',
   'lunchEndField': 'Lunch end',
   'lunchPaidField': 'Lunch is paid',
-  'holidaysField': 'Holidays (one YYYY-MM-DD per line)',
-  'extraWorkdaysField': 'Make-up workdays (one YYYY-MM-DD per line)',
-  'itemsCount': '{n} items',
   'holidaysCardTitle': 'Holiday calendar',
   'holidays2026Label': '2026 (official)',
   'holidays2027Label': '2027 (estimated)',
@@ -290,13 +282,6 @@ const money = (value, digits = 2) => `${formatMoney(value, digits)} 元`;
 function trimNumber(value, digits = 2) {
   const fixed = Number(value || 0).toFixed(digits);
   return fixed.replace(/\.?0+$/, '') || '0';
-}
-
-function splitDateLines(text) {
-  return String(text == null ? '' : text)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
 }
 
 /** 配置 -> 设置表单草稿（所有输入框都是字符串 / 布尔，编辑中不打断计时）。 */
@@ -699,12 +684,11 @@ function PeriodSelect(props) {
   ]);
 }
 
-/** 口径明细：月薪 / 工作日 / 日工时 / 今日目标 / 本月已赚 + 节假日来源。 */
+/** 口径明细：月薪 / 工作日 / 日工时 / 今日目标 / 本月已赚（节假日来源统一放在节假日卡片）。 */
 function DetailsFooter(props) {
   const t = props.t;
   const snap = props.snap;
   const rates = snap.rates;
-  const source = props.holidaySource || HOLIDAY_SOURCE;
   const items = [
     { key: 'salary', label: t('monthlySalaryLabel'), value: money(rates.monthlySalary, 2) },
     { key: 'workdays', label: t('workdaysThisMonth'), value: `${rates.monthlyWorkdays}${t('dayUnit')}` },
@@ -731,21 +715,6 @@ function DetailsFooter(props) {
         style: { fontSize: 13, fontWeight: 650, color: C.label2, ...NUM },
       }, item.value),
     ]))),
-    React.createElement('div', {
-      key: 'src',
-      style: { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 4, marginTop: 8, fontSize: 10.5 },
-    }, [
-      React.createElement('span', { key: 'l' }, `${t('holidaySource')}：`),
-      React.createElement('a', {
-        key: 'a',
-        href: source.url,
-        target: '_blank',
-        rel: 'noreferrer',
-        title: source.title,
-        style: { color: C.brand, textDecoration: 'none', fontWeight: 600 },
-      }, `${source.year} · ${t('holidaySourceLink')} ↗`),
-      React.createElement('span', { key: 'n', style: { color: C.label3 } }, `（${source.title}）`),
-    ]),
   ]);
 }
 
