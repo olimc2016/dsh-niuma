@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>设置区排版方案 · 牛马加速器</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f7f9;
+    --layer1: #ffffff;
+    --layer2: #f1f3f6;
+    --border1: rgba(0,0,0,.10);
+    --border: rgba(0,0,0,.16);
+    --label: #1f2430;
+    --label2: #5a6472;
+    --label3: #8a94a6;
+    --bg-layer-1: #ffffff;
+    --bg-layer-2: #f1f3f6;
+    --border-l1: rgba(0,0,0,.10);
+    --ground: rgba(0,0,0,.02);
+    --brand: #3b6ef5;
+    --ok: #1f9d55;
+    --gold: #d79a2b;
+    --gold-tint: #e7b84d;
+    --danger: #d1242f;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0c0f14;
+    --layer1: #141922;
+    --layer2: #1b222d;
+    --border1: rgba(255,255,255,.09);
+    --border: rgba(255,255,255,.16);
+    --label: #e8edf5;
+    --label2: #a8b3c4;
+    --label3: #748093;
+    --bg-layer-1: #141922;
+    --bg-layer-2: #1b222d;
+    --border-l1: rgba(255,255,255,.09);
+    --ground: rgba(255,255,255,.03);
+    --brand: #7aa2ff;
+    --ok: #3fce7c;
+    --gold: #d79a2b;
+    --gold-tint: #e7b84d;
+    --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--label);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    padding: 28px 24px 60px;
+  }
+  .page-head {
+    max-width: 1280px;
+    margin: 0 auto 22px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .page-head h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.2px; }
+  .page-head p { margin: 0; color: var(--label3); font-size: 12.5px; }
+  .head-tools { display: flex; align-items: center; gap: 10px; }
+  .btn-ghost {
+    appearance: none; border: 1px solid var(--border-l1); background: var(--bg-layer-1);
+    color: var(--label2); border-radius: 9px; padding: 7px 13px; font-size: 12.5px;
+    font-family: inherit; cursor: pointer; font-weight: 600;
+  }
+  .btn-ghost:hover { color: var(--label); }
+  .grid {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(470px, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
+  .variant {
+    background: var(--ground);
+    border: 1px solid var(--border-l1);
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .variant-head { display: flex; align-items: baseline; gap: 8px; margin: 0 2px 10px; }
+  .variant-tag {
+    font-size: 11px; font-weight: 800; color: #3a2a05;
+    background: linear-gradient(180deg,#f8dc86,#efc258 52%,#d99d2c);
+    border-radius: 6px; padding: 1px 7px; letter-spacing: .4px;
+  }
+  .variant-head h2 { font-size: 13.5px; margin: 0; }
+  .variant-head em { font-style: normal; color: var(--label3); font-size: 11.5px; }
+  .panel {
+    background: var(--bg-layer-1);
+    border: 1px solid var(--border-l1);
+    border-radius: 14px;
+    padding: 13px;
+  }
+  .panel-title {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700; color: var(--label); margin-bottom: 9px;
+  }
+  .panel-title::before { content: "▼"; font-size: 9px; color: var(--label2); }
+  .group-title {
+    font-size: 10.5px; font-weight: 700; color: var(--label3);
+    letter-spacing: .4px; text-transform: uppercase; margin-bottom: 5px;
+  }
+  label.f { display: grid; gap: 3px; min-width: 0; }
+  label.f > span { font-size: 10.5px; color: var(--label3); font-weight: 500; }
+  input.txt, select.sel {
+    width: 100%; min-height: 30px; padding: 5px 9px;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-layer-2); color: var(--label);
+    font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+    outline: none;
+  }
+  input.txt:disabled, select.sel:disabled { opacity: .45; cursor: default; }
+  .suffix-wrap { position: relative; }
+  .suffix-wrap input { padding-right: 62px; }
+  .suffix {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 10.5px; color: var(--label3); pointer-events: none;
+  }
+  .time-row { display: flex; align-items: center; gap: 4px; max-width: 158px; }
+  .time-row select { width: auto; flex: 1 1 56px; min-width: 52px; padding: 5px 4px; cursor: pointer; }
+  .time-row .sep { color: var(--label3); font-weight: 700; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 9px; border-radius: 9px;
+    border: 1px solid var(--border-l1); background: var(--bg-layer-2);
+    font-size: 12px; color: var(--label2); cursor: pointer; white-space: nowrap;
+  }
+  .chip input { accent-color: var(--gold-tint); width: 14px; height: 14px; }
+  .chip.disabled { opacity: .55; cursor: default; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .actions {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border-l1);
+  }
+  .save {
+    margin-left: auto; appearance: none; cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--gold-tint) 72%, rgba(0,0,0,.18));
+    color: #3a2a05;
+    background: linear-gradient(180deg,#f8dc86 0%,#efc258 52%,#d99d2c 100%);
+    border-radius: 9px; padding: 6px 20px; font-size: 13px; font-weight: 700;
+    letter-spacing: .3px; font-family: inherit;
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--gold-tint) 36%, transparent), inset 0 1px 0 rgba(255,255,255,.45);
+    text-shadow: 0 1px 0 rgba(255,255,255,.28);
+  }
+  /* A：独立分组卡 */
+  .group-card {
+    border: 1px solid var(--border-l1); border-radius: 11px;
+    background: var(--bg-layer-2); padding: 9px 10px; margin-top: 8px;
+  }
+  .group-card:first-of-type { margin-top: 0; }
+  .group-card .group-title { margin-bottom: 6px; }
+  /* C：表格式 */
+  .rows { border: 1px solid var(--border-l1); border-radius: 11px; overflow: hidden; }
+  .row {
+    display: grid; grid-template-columns: 92px minmax(0,1fr);
+    gap: 10px; align-items: center;
+    padding: 7px 10px; border-top: 1px solid var(--border-l1);
+  }
+  .row:first-child { border-top: none; }
+  .row > .rk { font-size: 11.5px; color: var(--label3); }
+  .row > .rv { min-width: 0; }
+  .row .time-row { max-width: 100%; }
+  .row .pair-inline { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row .pair-inline > * { flex: 1 1 120px; }
+  /* D：折叠分组 */
+  details.dg { border: 1px solid var(--border-l1); border-radius: 11px; margin-top: 8px; background: var(--bg-layer-2); }
+  details.dg:first-of-type { margin-top: 0; }
+  details.dg > summary {
+    list-style: none; cursor: pointer; user-select: none;
+    padding: 8px 10px; font-size: 11px; font-weight: 700; color: var(--label2);
+    letter-spacing: .3px; display: flex; align-items: center; gap: 6px;
+  }
+  details.dg > summary::-webkit-details-marker { display: none; }
+  details.dg > summary::before { content: "▸"; font-size: 10px; color: var(--label3); transition: transform .15s; }
+  details.dg[open] > summary::before { transform: rotate(90deg); }
+  details.dg > .dg-body { padding: 0 10px 10px; display: grid; gap: 8px; }
+  .hint { max-width: 1280px; margin: 18px auto 0; color: var(--label3); font-size: 12px; }
+  .hint b { color: var(--label2); }
+</style>
+</head>
+<body data-theme="dark">
+  <div class="page-head">
+    <div>
+      <h1>设置区排版 · 4 个方案</h1>
+      <p>字段、24 小时制、保存按钮都相同，只有排版不同。选一个（或组合）回复我就行。</p>
+    </div>
+    <div class="head-tools">
+      <button class="btn-ghost" id="themeBtn" type="button">切到浅色</button>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="hint">
+    <b>选型建议：</b>A 分组感强、好找字段；B 最省纵向空间；C 标签左对齐最好扫读；D 默认收起午休最清爽。
+    也可以组合，比如「A 的分组卡 + C 的标签左对齐」。
+  </p>
+
+<script>
+  window.addEventListener('error', (event) => { const pre = document.createElement('pre'); pre.id = 'err'; pre.textContent = 'JS ERROR: ' + event.message + ' @ ' + (event.filename || '') + ':' + (event.lineno || ''); document.body.appendChild(pre); });
+  const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+  function h(tag, attrs = {}, children = []) {
+    const el = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === 'class') el.className = value;
+      else if (key === 'text') el.textContent = value;
+      else if (key.startsWith('on')) el.addEventListener(key.slice(2).toLowerCase(), value);
+      else if (value !== undefined && value !== null) el.setAttribute(key, value);
+    }
+    for (const child of [].concat(children).flat(Infinity)) {
+      if (child === null || child === undefined) continue;
+      el.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+    }
+    return el;
+  }
+
+  function timeField(label, hour, minute, disabled) {
+    const hSel = h('select', { class: 'sel', disabled: disabled ? 'disabled' : null, 'aria-label': label + ' 小时' },
+      HOURS.map((v) => h('option', { value: v, selected: v === hour ? 'selected' : null, text: v })));
+    const mSel = h('select', { class: 'sel', disabled: disabled ? 'disabled' : null, 'aria-label': label + ' 分钟' },
+      MINUTES.map((v) => h('option', { value: v, selected: v === minute ? 'selected' : null, text: v })));
+    hSel.addEventListener('change', () => {
+      const other = mSel.value;
+      hSel.value = hSel.value; // noop
+      void other;
+    });
+    const row = h('div', { class: 'time-row' }, [hSel, h('span', { class: 'sep', text: ':' }), mSel]);
+    return h('label', { class: 'f' }, label ? [h('span', { text: label }), row] : [row]);
+  }
+
+  function salaryField() {
+    const input = h('input', { class: 'txt', value: '22000', inputmode: 'decimal' });
+    return h('label', { class: 'f' }, [
+      h('span', { text: '实收月薪' }),
+      h('div', { class: 'suffix-wrap' }, [input, h('span', { class: 'suffix', text: '元 / 月' })]),
+    ]);
+  }
+
+  function toggle(label, checked, disabled) {
+    const input = h('input', { type: 'checkbox', checked: checked ? 'checked' : null, disabled: disabled ? 'disabled' : null });
+    return h('label', { class: 'chip' + (disabled ? ' disabled' : '') }, [input, h('span', { text: label })]);
+  }
+
+  function actions() {
+    return h('div', { class: 'actions' }, [h('span', { style: 'flex:1 1 auto' }), h('button', { class: 'save', type: 'button' }, ['保存'])]);
+  }
+
+  function variant(tag, title, note, body) {
+    return h('section', { class: 'variant' }, [
+      h('div', { class: 'variant-head' }, [
+        h('span', { class: 'variant-tag', text: tag }),
+        h('h2', { text: title }),
+        h('em', { text: note }),
+      ]),
+      h('div', { class: 'panel' }, [h('div', { class: 'panel-title' }, ['设置']), body, actions()]),
+    ]);
+  }
+
+  /* A：独立分组卡 */
+  function variantA() {
+    const g = (title, children) => h('div', { class: 'group-card' }, [h('div', { class: 'group-title', text: title }), ...children]);
+    return variant('A', '独立分组卡', '组间有卡片边界，最好找字段', [
+      g('工资', [salaryField()]),
+      g('工作时间', [h('div', { class: 'pair' }, [timeField('上班时间', '09', '00'), timeField('下班时间', '18', '00')])]),
+      g('午休', [
+        h('div', { class: 'chips' }, [toggle('启用午休', true, false), toggle('午休算工时', false, false)]),
+        h('div', { class: 'pair', style: 'margin-top:7px' }, [timeField('午休开始', '12', '00'), timeField('午休结束', '13', '00')]),
+      ]),
+    ]);
+  }
+
+  /* B：两列紧凑网格 */
+  function variantB() {
+    return variant('B', '两列紧凑网格', '无分组标题，最省纵向空间', [
+      h('div', { class: 'pair', style: 'grid-template-columns: repeat(auto-fit, minmax(150px, 1fr))' }, [
+        salaryField(),
+        timeField('上班时间', '09', '00'),
+        timeField('下班时间', '18', '00'),
+        timeField('午休开始', '12', '00'),
+        timeField('午休结束', '13', '00'),
+      ]),
+      h('div', { class: 'chips', style: 'margin-top:9px' }, [toggle('启用午休', true, false), toggle('午休算工时', false, false)]),
+    ]);
+  }
+
+  /* C：表格式（标签左对齐） */
+  function variantC() {
+    const row = (key, value) => h('div', { class: 'row' }, [h('div', { class: 'rk', text: key }), h('div', { class: 'rv' }, [value])]);
+    return variant('C', '表格式', '标签固定左列，最好扫读', [
+      h('div', { class: 'rows' }, [
+        row('实收月薪', salaryField().querySelector('.suffix-wrap')),
+        row('上班时间', timeField('', '09', '00')),
+        row('下班时间', timeField('', '18', '00')),
+        row('午休', h('div', { class: 'chips' }, [toggle('启用午休', true, false), toggle('午休算工时', false, false)])),
+        row('午休时间', h('div', { class: 'pair-inline' }, [timeField('', '12', '00'), timeField('', '13', '00')])),
+      ]),
+    ]);
+  }
+
+  /* D：折叠分组（午休默认收起） */
+  function variantD() {
+    const dg = (title, open, children) => {
+      const details = h('details', { class: 'dg', open: open ? 'open' : null }, [
+        h('summary', {}, [h('span', { text: title })]),
+        h('div', { class: 'dg-body' }, children),
+      ]);
+      return details;
+    };
+    return variant('D', '折叠分组', '默认收起午休，最清爽', [
+      dg('工资', true, [salaryField()]),
+      dg('工作时间', true, [h('div', { class: 'pair' }, [timeField('上班时间', '09', '00'), timeField('下班时间', '18', '00')])]),
+      dg('午休', false, [
+        h('div', { class: 'chips' }, [toggle('启用午休', true, false), toggle('午休算工时', false, false)]),
+        h('div', { class: 'pair', style: 'margin-top:7px' }, [timeField('午休开始', '12', '00'), timeField('午休结束', '13', '00')]),
+      ]),
+    ]);
+  }
+
+  const grid = document.getElementById('grid');
+  [variantA(), variantB(), variantC(), variantD()].forEach((el) => grid.appendChild(el));
+
+  const themeBtn = document.getElementById('themeBtn');
+  themeBtn.addEventListener('click', () => {
+    const dark = document.body.getAttribute('data-theme') === 'dark';
+    document.body.setAttribute('data-theme', dark ? 'light' : 'dark');
+    themeBtn.textContent = dark ? '切到深色' : '切到浅色';
+  });
+</script>
+</body>
+</html>
