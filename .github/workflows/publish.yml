@@ -12,9 +12,10 @@
 # 也可以在本机登录 npm 后执行一次：
 #   npm trust github dsh-niuma --repository olimc2016/dsh-niuma --file publish.yml
 #
-# 发版流程（暂存后由维护者在 npm 网页 Approve，批准前可 reject）：
-#   改 package.json 版本号 → 提交 → git tag vX.Y.Z → git push origin vX.Y.Z
-#   或 GitHub Actions 页面手动 Run workflow → 到 npm 网页审批暂存版本
+# 发版模式（本仓库默认 A）：
+#   A. 自动直发（默认）：推 tag → CI 用 OIDC 直接 `npm publish --provenance` 上线，**无需人工批准**。
+#      绑定页必须勾选 “Allow npm publish”。
+#   B. 暂存后人工批：手动 Run workflow 选 mode=stage，到 npm 网页 Staged Packages 点 Approve。
 name: publish
 
 on:
@@ -61,14 +62,15 @@ jobs:
       - name: Test
         run: npm test
 
-      # npm 的 Trusted Publisher 绑定页里 “Allowed actions” **只列 npm publish**（没有 stage 选项）：
-      #   - `npm stage publish` 不需要任何 allow 就能用（npm 官方：暂存不要求授权 action）；
-      #   - 想让推 tag 直接上线，才需要绑定页勾选 “npm publish”，并用手动触发 mode=publish。
-      # 默认仍走暂存：tag 推送只暂存，由维护者在 npmjs.com 完成 2FA 批准。
-      - name: Stage publish (provenance, 待 npm 网页审批)
-        if: github.event_name == 'push' || inputs.mode == 'stage'
-        run: npm stage publish --provenance --access public
-
-      - name: Publish directly (needs binding to allow npm publish)
-        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'
+      # 口径（2026-10 实测）：
+      #   - npm 绑定页的 “Allowed actions” 只有 `npm publish` 一项（没有 stage）；
+      #   - `npm stage publish` 不需要该授权就能用（暂存不改线上内容）；
+      #   - 本仓库默认**推 tag 直接发布**（绑定页需勾 “Allow npm publish”），发布带 provenance；
+      #   - 想改成「暂存 + 人工批」：手动 Run workflow 选 mode=stage，或把下面默认分支对调。
+      - name: Publish directly (provenance, 需绑定页允许 npm publish)
+        if: github.event_name == 'push' || inputs.mode == 'publish'
         run: npm publish --provenance --access public
+
+      - name: Stage only (manual approval on npmjs.com)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'stage'
+        run: npm stage publish --provenance --access public

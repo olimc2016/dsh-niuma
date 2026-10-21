@@ -2,6 +2,15 @@
 
 本文件记录用户可感知的变化。版本号遵循语义化版本。
 
+## 0.1.1 — 2026-10-21
+
+发布链路改为**自动直发**（用户可感知：以后发版不用人工批准）。
+
+- 推 tag `vX.Y.Z` → GitHub Actions 用 npm Trusted Publishing（OIDC）直接 `npm publish --provenance --access public`
+- 发布带 **SLSA provenance**（0.1.0 是本地手动发布，没有 provenance）
+- 保留人工模式：手动 Run workflow 选 `mode=stage`，可走「暂存 + 在 npm 网页批准」
+- 前提：npm 包设置里的 Trusted Publisher 绑定页勾选 “Allow npm publish”
+
 ## 0.1.0 — 2026-10-21
 
 首个版本。

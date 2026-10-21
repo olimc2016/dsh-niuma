@@ -1,5 +1,7 @@
 # dsh-niuma · Salary Ticker for DSH
 
+[![npm](https://img.shields.io/npm/v/dsh-niuma.svg)](https://www.npmjs.com/package/dsh-niuma)
+
 > A DSH (DeepSeek Harness) plugin that turns your **monthly take-home pay** into a **live cash counter that ticks every second**.
 > Glance at it during work: your money grows before your eyes. After hours it stops — a tiny daily reality check.
 

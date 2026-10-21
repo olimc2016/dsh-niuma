@@ -1,5 +1,7 @@
 # dsh-niuma · 牛马加速器
 
+[![npm](https://img.shields.io/npm/v/dsh-niuma.svg)](https://www.npmjs.com/package/dsh-niuma)
+
 > DSH（DeepSeek Harness）插件：把**实收月薪**换算成**每秒跳动的现金计数器**。
 > 上班摸鱼看一眼，今天的钱正在一秒一秒地长大；下班后它停住，提醒你「今天又白干了」还是「今天赚够了」。
 
