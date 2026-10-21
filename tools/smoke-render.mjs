@@ -181,6 +181,8 @@ expectText('金额单位元', '元');
 expectText('节假日卡片-春节', '春节');
 expectText('节假日卡片-调休说明', '调休上班');
 expectText('2027 预估分组', '2027 年（预估）');
+expectText('本月已工作天数', '本月已工作');
+expectText('剩余工作日', '剩余工作日');
 expectText('预估标注', '预估');
 
 // 根容器必须是滚动容器：DSH main slot 给的是定高容器，插件不自带滚动条时展开设置会被裁掉

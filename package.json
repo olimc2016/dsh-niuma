@@ -1,6 +1,6 @@
 {
   "name": "dsh-niuma",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "牛马加速器 — DSH 工资换算实时计数器：按实收月薪、上下班时间、午休（可设是否算工时）、法定节假日自动折算秒/分/时/日/周/月工资，工资每秒滚动增长。Community salary ticker plugin for DeepSeek Harness.",
   "type": "module",
   "main": "lib/index.js",

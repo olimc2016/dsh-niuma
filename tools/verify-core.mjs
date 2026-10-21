@@ -193,6 +193,17 @@ eq('18:00 进度 1', e(18, 0).todayProgress, 1);
 eq('08:00 距上班 1 小时', e(8, 0).secondsToStart, 3600);
 eq('17:00 距下班 1 小时', e(17, 0).secondsToEnd, 3600);
 
+/* 本月工作天数进度：已工作 + 剩余 = 当月总工作日 */
+eq('09:00 本月已工作 10 天', e(9, 0).monthWorkdaysDone, 10);
+eq('09:00 本月剩余 8 天', e(9, 0).monthWorkdaysLeft, 8);
+eq('13:30 仍在上班 → 今天算剩余', e(13, 30).monthWorkdaysDone, 10);
+eq('18:00 下班后 → 今天算已完成', e(18, 0).monthWorkdaysDone, 11);
+eq('18:30 本月剩余 7 天', e(18, 30).monthWorkdaysLeft, 7);
+eq('已工作 + 剩余 = 当月总工作日（上班中）', e(9, 0).monthWorkdaysDone + e(9, 0).monthWorkdaysLeft, e(9, 0).monthWorkdays);
+eq('已工作 + 剩余 = 当月总工作日（下班后）', e(20, 0).monthWorkdaysDone + e(20, 0).monthWorkdaysLeft, e(20, 0).monthWorkdays);
+eq('周末（10-24）已工作 13 天', earnedToday(cfg22, at(2026, 9, 24, 11, 0)).monthWorkdaysDone, 13);
+eq('周末（10-24）剩余 5 天', earnedToday(cfg22, at(2026, 9, 24, 11, 0)).monthWorkdaysLeft, 5);
+
 const sat = earnedToday(cfg22, at(2026, 9, 24, 11, 0));
 eq('周六休息', sat.status, 'rest');
 eq('周六已赚 0', sat.todayEarned, 0);

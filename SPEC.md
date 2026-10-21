@@ -119,6 +119,9 @@ export function earnedToday(cfg, now /*Date*/): {
   paidSecondsElapsed, paidSecondsTotal, todayEarned, todayTarget,
   todayProgress,        // 0..1
   monthEarned,          // 本月已赚（今天之前完整工作日 × 日工资 + 今日已赚）
+  monthWorkdays,        // 当月总工作日
+  monthWorkdaysDone,    // 本月已工作天数（今天之前完整工作日 + 今天已下班则 +1）
+  monthWorkdaysLeft,    // 剩余工作天数 = 总工作日 - 已工作
   secondsToStart,       // >0 表示还没上班，否则 0
   secondsToEnd,         // >0 表示还没下班，否则 0
   rates                 // computeRates 同款对象

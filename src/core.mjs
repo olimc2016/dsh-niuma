@@ -342,6 +342,16 @@ export function earnedToday(config, now) {
   const secondsToStart = workday && nowSec < startSec ? startSec - nowSec : 0;
   const secondsToEnd = workday && nowSec < endSec ? endSec - nowSec : 0;
 
+  // 本月工作天数进度：已完成 = 今天之前的完整工作日 +（今天已下班则 +1）；
+  // 「今天」在上班/午休中时算剩余（还没干完），这样「已工作 + 剩余 = 本月总工作日」。
+  const monthWorkdays = rates.monthlyWorkdays;
+  let monthWorkdaysDone = 0;
+  for (let day = 1; day < date.getDate(); day += 1) {
+    if (isWorkday(dateKeyOf(new Date(date.getFullYear(), date.getMonth(), day)), config)) monthWorkdaysDone += 1;
+  }
+  if (workday && status === 'off') monthWorkdaysDone += 1;
+  const monthWorkdaysLeft = Math.max(0, monthWorkdays - monthWorkdaysDone);
+
   return {
     dateKey: key,
     isWorkday: workday,
@@ -352,6 +362,9 @@ export function earnedToday(config, now) {
     todayTarget,
     todayProgress,
     monthEarned,
+    monthWorkdays,
+    monthWorkdaysDone,
+    monthWorkdaysLeft,
     secondsToStart,
     secondsToEnd,
     rates,

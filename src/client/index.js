@@ -116,6 +116,8 @@ const zh = {
   'paidHoursPerDay': '日有效工时',
   'todayTarget': '今日目标',
   'monthEarned': '本月已赚',
+  'monthWorkedDays': '本月已工作',
+  'monthRemainingDays': '剩余工作日',
   'holidaySourceLink': '国务院办公厅 2026 年节假日安排',
   'configLoading': '正在读取设置…',
   'configFailed': '设置读取失败，使用默认值',
@@ -207,6 +209,8 @@ const en = {
   'paidHoursPerDay': 'Paid hours / day',
   'todayTarget': "Today's target",
   'monthEarned': 'Earned this month',
+  'monthWorkedDays': 'Worked this month',
+  'monthRemainingDays': 'Workdays left',
   'holidaySourceLink': 'State Council 2026 holiday schedule',
   'configLoading': 'Loading settings…',
   'configFailed': 'Failed to load settings, using defaults',
@@ -695,6 +699,8 @@ function DetailsFooter(props) {
     { key: 'hours', label: t('paidHoursPerDay'), value: `${trimNumber(rates.paidHours, 2)}${t('hourUnit')}` },
     { key: 'target', label: t('todayTarget'), value: money(snap.todayTarget, 2) },
     { key: 'month', label: t('monthEarned'), value: money(snap.monthEarned, 2) },
+    { key: 'worked', label: t('monthWorkedDays'), value: `${snap.monthWorkdaysDone}${t('dayUnit')}` },
+    { key: 'left', label: t('monthRemainingDays'), value: `${snap.monthWorkdaysLeft}${t('dayUnit')}` },
   ];
   return React.createElement('div', {
     style: {
