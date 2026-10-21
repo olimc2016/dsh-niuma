@@ -7,6 +7,7 @@
 #     Repository:            dsh-niuma
 #     Workflow filename:     publish.yml
 #     Environment:           （留空）
+#     Allowed actions:       （可留空；stage publish 不需要它。只有想 CI 直接发版才勾 npm publish）
 #
 # 也可以在本机登录 npm 后执行一次：
 #   npm trust github dsh-niuma --repository olimc2016/dsh-niuma --file publish.yml
@@ -21,6 +22,14 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'stage = 提交到暂存区（你到 npmjs.com 点 Approve）；publish = 直接上线（绑定页要勾 allow npm publish）'
+        type: choice
+        options:
+          - stage
+          - publish
+        default: stage
 
 permissions:
   contents: read
@@ -52,5 +61,14 @@ jobs:
       - name: Test
         run: npm test
 
+      # npm 的 Trusted Publisher 绑定页里 “Allowed actions” **只列 npm publish**（没有 stage 选项）：
+      #   - `npm stage publish` 不需要任何 allow 就能用（npm 官方：暂存不要求授权 action）；
+      #   - 想让推 tag 直接上线，才需要绑定页勾选 “npm publish”，并用手动触发 mode=publish。
+      # 默认仍走暂存：tag 推送只暂存，由维护者在 npmjs.com 完成 2FA 批准。
       - name: Stage publish (provenance, 待 npm 网页审批)
+        if: github.event_name == 'push' || inputs.mode == 'stage'
         run: npm stage publish --provenance --access public
+
+      - name: Publish directly (needs binding to allow npm publish)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'
+        run: npm publish --provenance --access public
