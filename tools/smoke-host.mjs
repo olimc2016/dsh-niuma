@@ -264,8 +264,8 @@ try {
   check('data.defaults === core.DEFAULTS', deepEqual(configPayload?.data?.defaults, DEFAULTS));
   check('defaults.monthlySalary 保持 10000', configPayload?.data?.defaults?.monthlySalary === 10000);
   check('data.config 是补全后的完整配置', ['workStart', 'workEnd', 'lunchEnabled', 'lunchStart', 'lunchEnd', 'lunchPaid', 'holidays', 'extraWorkdays'].every((key) => configPayload?.data?.config?.[key] !== undefined));
-  check('默认节假日 33 天', configPayload?.data?.config?.holidays?.length === 33, String(configPayload?.data?.config?.holidays?.length));
-  check('默认调休上班日 6 天', configPayload?.data?.config?.extraWorkdays?.length === 6, String(configPayload?.data?.config?.extraWorkdays?.length));
+  check('默认节假日 62 天（2026 官方 33 + 2027 预估 29）', configPayload?.data?.config?.holidays?.length === 62, String(configPayload?.data?.config?.holidays?.length));
+  check('默认调休上班日 11 天（2026 官方 6 + 2027 预估 5）', configPayload?.data?.config?.extraWorkdays?.length === 11, String(configPayload?.data?.config?.extraWorkdays?.length));
   check('data.holidaySource === holidays.HOLIDAY_SOURCE', deepEqual(configPayload?.data?.holidaySource, HOLIDAY_SOURCE));
   check('holidaySource.year === 2026', configPayload?.data?.holidaySource?.year === 2026);
   check('holidaySource.url 是 https 官方链接', String(configPayload?.data?.holidaySource?.url ?? '').startsWith('https://'));
@@ -296,7 +296,7 @@ try {
   check('返回的配置已补全其他字段', firstWritePayload?.data?.config?.workEnd === '18:30' && firstWritePayload?.data?.config?.lunchEnabled === true);
   check('配置文件已落盘', existsSync(TEST_CONFIG_PATH));
   const stored = JSON.parse(readFileSync(TEST_CONFIG_PATH, 'utf8'));
-  check('落盘的是完整合法配置（含 33 天节假日）', stored?.monthlySalary === 22000 && Array.isArray(stored?.holidays) && stored.holidays.length === 33, `holidays=${stored?.holidays?.length}`);
+  check('落盘的是完整合法配置（含 62 天节假日：2026 官方 + 2027 预估）', stored?.monthlySalary === 22000 && Array.isArray(stored?.holidays) && stored.holidays.length === 62, `holidays=${stored?.holidays?.length}`);
   check('落盘文件目录权限不含其他人可读（0600）', (() => { try { return (readFileSync(TEST_CONFIG_PATH).length > 0); } catch { return false; } })());
 
   const afterWrite = parseJson(await invoke(main.routes, '/niuma/config', { method: 'GET', url: '/niuma/config' }));

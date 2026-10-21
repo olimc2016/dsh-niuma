@@ -1,17 +1,23 @@
 /**
- * 2026 年中国法定节假日与调休上班日（纯数据，宿主 + 浏览器共用）。
+ * 中国法定节假日与调休上班日（纯数据，宿主 + 浏览器共用）。
  *
- * 来源：国务院办公厅《关于2026年部分节假日安排的通知》（国办发明电〔2025〕7号），
- * 发布日期 2025-11-04。逐条核对自官方原文：
- *   https://www.gov.cn/zhengce/content/202511/content_7047090.htm
- *
- * 只收录 2026 年。跨年后用户可在面板「节假日」里自行增删（一行一个 YYYY-MM-DD）。
+ * 数据分两部分：
+ *   1. **2026 官方数据**：国务院办公厅《关于2026年部分节假日安排的通知》（国办发明电〔2025〕7号），
+ *      发布日期 2025-11-04，逐条核对自官方原文：
+ *        https://www.gov.cn/zhengce/content/202511/content_7047090.htm
+ *   2. **2027 预估数据**（`HOLIDAY_ESTIMATE_2027.estimated === true`，**官方尚未公布**）：
+ *      按 2024 年修订的《全国年节及纪念日放假办法》与往年惯例推算，仅用于提前查看；
+ *      官方通知发布后（往年 11 月初）替换为正式数据并升版本。
  *
  * @module dsh-niuma/holidays
  */
 
-/** 2026 年放假日期（不含周末的普通休息日；这些日期一律不算工作日） */
-export const DEFAULT_HOLIDAYS = Object.freeze([
+/* ------------------------------------------------------------------ *
+ * 2026 官方数据
+ * ------------------------------------------------------------------ */
+
+/** 2026 年法定放假日期（含与周末顺连的休息日；这些日期一律不算工作日） */
+export const OFFICIAL_HOLIDAYS_2026 = Object.freeze([
   // 元旦：1月1日（周四）至3日（周六）
   '2026-01-01', '2026-01-02', '2026-01-03',
   // 春节：2月15日（周日）至23日（周一），共 9 天
@@ -31,7 +37,7 @@ export const DEFAULT_HOLIDAYS = Object.freeze([
 ]);
 
 /** 2026 年调休上班日（周末补班，算工作日） */
-export const DEFAULT_EXTRA_WORKDAYS = Object.freeze([
+export const OFFICIAL_EXTRA_WORKDAYS_2026 = Object.freeze([
   '2026-01-04', // 元旦调休：周日上班
   '2026-02-14', // 春节调休：周六上班
   '2026-02-28', // 春节调休：周六上班
@@ -40,20 +46,83 @@ export const DEFAULT_EXTRA_WORKDAYS = Object.freeze([
   '2026-10-10', // 国庆调休：周六上班
 ]);
 
-/** 2026 年七个法定节假日区段（面板「节假日」卡片用；日期与上面 DEFAULT_HOLIDAYS 逐段对应） */
+/** 2026 年七个法定节假日区段（面板「节假日」卡片用，与上面逐段对应） */
 export const HOLIDAY_BLOCKS = Object.freeze([
-  { id: 'newYear', from: '2026-01-01', to: '2026-01-03', days: 3 },
-  { id: 'spring', from: '2026-02-15', to: '2026-02-23', days: 9 },
-  { id: 'qingming', from: '2026-04-04', to: '2026-04-06', days: 3 },
-  { id: 'labour', from: '2026-05-01', to: '2026-05-05', days: 5 },
-  { id: 'dragon', from: '2026-06-19', to: '2026-06-21', days: 3 },
-  { id: 'midAutumn', from: '2026-09-25', to: '2026-09-27', days: 3 },
-  { id: 'national', from: '2026-10-01', to: '2026-10-07', days: 7 },
+  { id: 'newYear', year: 2026, from: '2026-01-01', to: '2026-01-03', days: 3, estimated: false },
+  { id: 'spring', year: 2026, from: '2026-02-15', to: '2026-02-23', days: 9, estimated: false },
+  { id: 'qingming', year: 2026, from: '2026-04-04', to: '2026-04-06', days: 3, estimated: false },
+  { id: 'labour', year: 2026, from: '2026-05-01', to: '2026-05-05', days: 5, estimated: false },
+  { id: 'dragon', year: 2026, from: '2026-06-19', to: '2026-06-21', days: 3, estimated: false },
+  { id: 'midAutumn', year: 2026, from: '2026-09-25', to: '2026-09-27', days: 3, estimated: false },
+  { id: 'national', year: 2026, from: '2026-10-01', to: '2026-10-07', days: 7, estimated: false },
 ]);
 
-/** 数据出处，面板脚注展示用 */
+/** 2026 官方数据出处，面板脚注展示用 */
 export const HOLIDAY_SOURCE = Object.freeze({
   year: 2026,
+  estimated: false,
   title: '国务院办公厅关于2026年部分节假日安排的通知（国办发明电〔2025〕7号）',
   url: 'https://www.gov.cn/zhengce/content/202511/content_7047090.htm',
 });
+
+/* ------------------------------------------------------------------ *
+ * 2027 预估数据（官方未公布，仅按规则与惯例推算）
+ * ------------------------------------------------------------------ */
+
+/** 2027 年放假日期（预估）：元旦 3 天 / 春节 9 天 / 清明 3 天 / 劳动 5 天 / 端午 1 天 / 中秋 1 天 / 国庆 7 天 */
+export const ESTIMATED_HOLIDAYS_2027 = Object.freeze([
+  '2027-01-01', '2027-01-02', '2027-01-03',
+  '2027-02-05', '2027-02-06', '2027-02-07', '2027-02-08', '2027-02-09',
+  '2027-02-10', '2027-02-11', '2027-02-12', '2027-02-13',
+  '2027-04-03', '2027-04-04', '2027-04-05',
+  '2027-05-01', '2027-05-02', '2027-05-03', '2027-05-04', '2027-05-05',
+  '2027-06-09',
+  '2027-09-15',
+  '2027-10-01', '2027-10-02', '2027-10-03', '2027-10-04', '2027-10-05',
+  '2027-10-06', '2027-10-07',
+]);
+
+/** 2027 年调休上班日（预估，周末补班） */
+export const ESTIMATED_EXTRA_WORKDAYS_2027 = Object.freeze([
+  '2027-01-31', // 春节调休：周日上班（预估）
+  '2027-02-14', // 春节调休：周日上班（预估）
+  '2027-05-08', // 劳动节调休：周六上班（预估）
+  '2027-09-26', // 国庆调休：周日上班（预估）
+  '2027-10-09', // 国庆调休：周六上班（预估）
+]);
+
+/** 2027 年七个法定节假日区段（预估；`estimated: true` 用于面板标注） */
+export const HOLIDAY_BLOCKS_2027_ESTIMATED = Object.freeze([
+  { id: 'newYear', year: 2027, from: '2027-01-01', to: '2027-01-03', days: 3, estimated: true },
+  { id: 'spring', year: 2027, from: '2027-02-05', to: '2027-02-13', days: 9, estimated: true },
+  { id: 'qingming', year: 2027, from: '2027-04-03', to: '2027-04-05', days: 3, estimated: true },
+  { id: 'labour', year: 2027, from: '2027-05-01', to: '2027-05-05', days: 5, estimated: true },
+  { id: 'dragon', year: 2027, from: '2027-06-09', to: '2027-06-09', days: 1, estimated: true },
+  { id: 'midAutumn', year: 2027, from: '2027-09-15', to: '2027-09-15', days: 1, estimated: true },
+  { id: 'national', year: 2027, from: '2027-10-01', to: '2027-10-07', days: 7, estimated: true },
+]);
+
+/** 2027 预估数据的出处与免责说明（面板必须显著标注「预估」） */
+export const HOLIDAY_ESTIMATE_2027 = Object.freeze({
+  year: 2027,
+  estimated: true,
+  announced: false,
+  title: '2027 年放假安排（预估，官方尚未公布）',
+  note: '官方通知通常在前一年 11 月初发布；以下为按 2024 年修订的《全国年节及纪念日放假办法》与往年惯例推算，仅供参考，请以国务院通知为准。',
+  basis: [
+    '春节自除夕起放假调休，一般连休 8–9 天',
+    '国庆 7 天、劳动节 5 天',
+    '元旦 / 清明 / 端午 / 中秋各 1 天法定假，遇周末顺连',
+  ],
+  url: 'https://www.gov.cn/zhengce/xxgk/',
+});
+
+/* ------------------------------------------------------------------ *
+ * 默认值（2026 官方 + 2027 预估；跨年也能算，但 2027 会标注预估）
+ * ------------------------------------------------------------------ */
+
+/** 默认节假日：2026 官方 + 2027 预估 */
+export const DEFAULT_HOLIDAYS = Object.freeze([...OFFICIAL_HOLIDAYS_2026, ...ESTIMATED_HOLIDAYS_2027]);
+
+/** 默认调休上班日：2026 官方 + 2027 预估 */
+export const DEFAULT_EXTRA_WORKDAYS = Object.freeze([...OFFICIAL_EXTRA_WORKDAYS_2026, ...ESTIMATED_EXTRA_WORKDAYS_2027]);

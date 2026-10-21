@@ -6,6 +6,9 @@
  */
 import {
   DEFAULT_HOLIDAYS, DEFAULT_EXTRA_WORKDAYS, HOLIDAY_SOURCE,
+  OFFICIAL_HOLIDAYS_2026, OFFICIAL_EXTRA_WORKDAYS_2026,
+  ESTIMATED_HOLIDAYS_2027, ESTIMATED_EXTRA_WORKDAYS_2027,
+  HOLIDAY_BLOCKS, HOLIDAY_BLOCKS_2027_ESTIMATED, HOLIDAY_ESTIMATE_2027,
 } from '../src/holidays.mjs';
 import { isWorkday } from '../src/core.mjs';
 
@@ -28,13 +31,34 @@ const EXPECTED_HOLIDAYS = [
 ];
 const EXPECTED_EXTRA = ['2026-01-04', '2026-02-14', '2026-02-28', '2026-05-09', '2026-09-20', '2026-10-10'];
 
-const holidays = [...DEFAULT_HOLIDAYS];
-const extra = [...DEFAULT_EXTRA_WORKDAYS];
+const holidays = [...OFFICIAL_HOLIDAYS_2026];
+const extra = [...OFFICIAL_EXTRA_WORKDAYS_2026];
+const est2027 = [...ESTIMATED_HOLIDAYS_2027];
+const est2027Extra = [...ESTIMATED_EXTRA_WORKDAYS_2027];
 
-ok('放假日共 33 天', holidays.length === 33, `实际 ${holidays.length}`);
-ok('调休上班日共 6 天', extra.length === 6, `实际 ${extra.length}`);
-ok('放假日与官方通知逐条一致', JSON.stringify(holidays) === JSON.stringify(EXPECTED_HOLIDAYS));
-ok('调休上班日与官方通知逐条一致', JSON.stringify(extra) === JSON.stringify(EXPECTED_EXTRA));
+ok('2026 官方放假日共 33 天', holidays.length === 33, `实际 ${holidays.length}`);
+ok('2026 官方调休上班日共 6 天', extra.length === 6, `实际 ${extra.length}`);
+ok('2027 预估放假日共 29 天', est2027.length === 29, `实际 ${est2027.length}`);
+ok('2027 预估调休上班日共 5 天', est2027Extra.length === 5, `实际 ${est2027Extra.length}`);
+ok('默认配置 = 2026 官方 + 2027 预估（62 天）', DEFAULT_HOLIDAYS.length === 62, `实际 ${DEFAULT_HOLIDAYS.length}`);
+ok('默认调休 = 2026 + 2027（11 天）', DEFAULT_EXTRA_WORKDAYS.length === 11, `实际 ${DEFAULT_EXTRA_WORKDAYS.length}`);
+ok('默认列表按年份升序排列', DEFAULT_HOLIDAYS.every((key, i) => i === 0 || key > DEFAULT_HOLIDAYS[i - 1]));
+ok('默认列表不重复', new Set(DEFAULT_HOLIDAYS).size === DEFAULT_HOLIDAYS.length);
+ok('2026 放假日与官方通知逐条一致', JSON.stringify(holidays) === JSON.stringify(EXPECTED_HOLIDAYS));
+ok('2026 调休上班日与官方通知逐条一致', JSON.stringify(extra) === JSON.stringify(EXPECTED_EXTRA));
+ok('2027 预估值全部是 2027 年', est2027.every((key) => key.startsWith('2027-')));
+ok('2027 预估放假日升序无重复', est2027.every((key, i) => i === 0 || key > est2027[i - 1]));
+ok('2027 预估调休全部是周末', est2027Extra.every((key) => {
+  const [y, m, d] = key.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return dow === 0 || dow === 6;
+}));
+ok('2027 预估数据明确标注 estimated=true', HOLIDAY_ESTIMATE_2027.estimated === true);
+ok('2027 预估数据注明官方未公布', HOLIDAY_ESTIMATE_2027.announced === false && /预估/.test(HOLIDAY_ESTIMATE_2027.title));
+ok('2027 预估说明写明仅供参考', /仅供参考/.test(HOLIDAY_ESTIMATE_2027.note));
+ok('2027 区块天数合计 29', HOLIDAY_BLOCKS_2027_ESTIMATED.reduce((sum, b) => sum + b.days, 0) === 29);
+ok('2027 区块全部标记为预估', HOLIDAY_BLOCKS_2027_ESTIMATED.every((b) => b.estimated === true));
+ok('2026 区块全部标记为非预估', HOLIDAY_BLOCKS.every((b) => b.estimated === false));
 
 /* 格式 / 排序 / 去重 / 真实日期 */
 const KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -83,6 +107,10 @@ ok('国庆 10-08 是工作日', isWorkday('2026-10-08', cfg) === true);
 ok('10-10 调休是工作日', isWorkday('2026-10-10', cfg) === true);
 ok('空节假日列表时周六仍休息', isWorkday('2026-10-24', { holidays: [], extraWorkdays: [] }) === false);
 ok('空节假日列表时 10-01 变成工作日', isWorkday('2026-10-01', { holidays: [], extraWorkdays: [] }) === true);
+const cfgAll = { holidays: DEFAULT_HOLIDAYS, extraWorkdays: DEFAULT_EXTRA_WORKDAYS };
+ok('2027 春节（预估）不是工作日', isWorkday('2027-02-08', cfgAll) === false);
+ok('2027 春节调休（预估）是工作日', isWorkday('2027-02-14', cfgAll) === true);
+ok('2027 国庆（预估）不是工作日', isWorkday('2027-10-02', cfgAll) === false);
 
 /* 出处元数据 */
 ok('HOLIDAY_SOURCE.year = 2026', HOLIDAY_SOURCE.year === 2026);

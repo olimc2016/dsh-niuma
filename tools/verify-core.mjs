@@ -53,8 +53,8 @@ const defaults = cfgOf();
 eq('默认月薪', defaults.monthlySalary, 10000);
 eq('默认上班', defaults.workStart, '09:00');
 eq('默认午休算工时 = false', defaults.lunchPaid, false);
-eq('默认节假日 33 天', defaults.holidays.length, 33);
-eq('默认调休上班 6 天', defaults.extraWorkdays.length, 6);
+eq('默认节假日 62 天（2026 官方 33 + 2027 预估 29）', defaults.holidays.length, 62);
+eq('默认调休上班 11 天（2026 官方 6 + 2027 预估 5）', defaults.extraWorkdays.length, 11);
 eq('非法月薪被记录', normalizeConfig({ monthlySalary: -1 }).errors.length > 0, true);
 eq('下班早于上班被记录', normalizeConfig({ workStart: '18:00', workEnd: '09:00' }).errors.length > 0, true);
 eq('午休超出班次被记录', normalizeConfig({ lunchStart: '08:00', lunchEnd: '12:00' }).errors.length > 0, true);
@@ -101,6 +101,21 @@ for (let month = 0; month < 12; month += 1) {
   eq(`2026-${String(month + 1).padStart(2, '0')} 法定假日`, holidayDaysInMonth(2026, month, cfg), EXPECTED_MONTH_HOLIDAYS[month]);
 }
 eq('2026 全年工作日合计 248 天', EXPECTED_MONTH_WORKDAYS.reduce((a, b) => a + b, 0), 248);
+
+/* 2027 预估数据（默认配置已含）独立核对：官方尚未公布，按规则推算 */
+const EXPECTED_2027_WORKDAYS = [21, 15, 23, 21, 19, 21, 22, 22, 22, 17, 22, 23];
+const EXPECTED_2027_HOLIDAYS = [3, 9, 0, 3, 5, 1, 0, 0, 1, 7, 0, 0];
+for (let month = 0; month < 12; month += 1) {
+  eq(`2027-${String(month + 1).padStart(2, '0')} 工作日（预估）`, workdaysInMonth(2027, month, cfg), EXPECTED_2027_WORKDAYS[month]);
+  eq(`2027-${String(month + 1).padStart(2, '0')} 法定假日（预估）`, holidayDaysInMonth(2027, month, cfg), EXPECTED_2027_HOLIDAYS[month]);
+}
+eq('2027 全年工作日合计 248 天（预估）', EXPECTED_2027_WORKDAYS.reduce((a, b) => a + b, 0), 248);
+eq('2027 全年法定假日合计 29 天（预估）', EXPECTED_2027_HOLIDAYS.reduce((a, b) => a + b, 0), 29);
+const feb27 = monthSummary(cfg22m, 2027, 1);
+eq('2027 年 2 月（预估）工作日 15 天', feb27.workdays, 15);
+eq('2027 年 2 月（预估）法定假日 9 天', feb27.holidayDays, 9);
+eq('2027 年 2 月（预估）日工资 = 22000 / 15', feb27.dailyWage, 22000 / 15);
+
 eq('2026 全年法定假日合计 33 天', EXPECTED_MONTH_HOLIDAYS.reduce((a, b) => a + b, 0), 33);
 
 const oct = monthSummary(cfg22m, 2026, 9);

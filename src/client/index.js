@@ -9,7 +9,12 @@ import {
   normalizeConfig,
   yearSummary,
 } from '../core.mjs';
-import { HOLIDAY_BLOCKS, HOLIDAY_SOURCE } from '../holidays.mjs';
+import {
+  HOLIDAY_BLOCKS,
+  HOLIDAY_BLOCKS_2027_ESTIMATED,
+  HOLIDAY_ESTIMATE_2027,
+  HOLIDAY_SOURCE,
+} from '../holidays.mjs';
 
 /**
  * dsh-niuma 浏览器半侧：DSH 侧栏「牛马」入口 + 中栏工资实时计数器面板。
@@ -128,7 +133,14 @@ const zh = {
   'holidaysField': '节假日（一行一个 YYYY-MM-DD）',
   'extraWorkdaysField': '调休上班日（一行一个 YYYY-MM-DD）',
   'itemsCount': '{n} 条',
-  'holidaysCardTitle': '2026 年节假日安排',
+  'holidaysCardTitle': '节假日安排',
+  'holidays2026Label': '2026 年（官方）',
+  'holidays2027Label': '2027 年（预估）',
+  'holidayEstimateTag': '预估',
+  'holidayEstimateNote': '官方尚未公布，以上为按规则与惯例推算，仅供参考，以国务院通知为准。',
+  'holidayEstimateShort': '2027 为预估值',
+  'settingsDataNote': '节假日与调休数据见上方「节假日安排」卡片（2027 年为预估值，不可在本页编辑）。',
+
   'holidaysCardSub': '法定假日 {days} 天 · 调休上班 {extra} 天',
   'holidaysDaysShort': '{days} 天',
   'holidaysExtraNote': '调休上班日 {extra} 天（周末补班，按工作日计）',
@@ -216,7 +228,14 @@ const en = {
   'holidaysField': 'Holidays (one YYYY-MM-DD per line)',
   'extraWorkdaysField': 'Make-up workdays (one YYYY-MM-DD per line)',
   'itemsCount': '{n} items',
-  'holidaysCardTitle': '2026 holidays',
+  'holidaysCardTitle': 'Holiday calendar',
+  'holidays2026Label': '2026 (official)',
+  'holidays2027Label': '2027 (estimated)',
+  'holidayEstimateTag': 'estimate',
+  'holidayEstimateNote': 'Not announced officially yet — estimated from the rules and past practice, for reference only.',
+  'holidayEstimateShort': '2027 is estimated',
+  'settingsDataNote': 'Holiday data lives in the calendar card above (2027 values are estimates and not editable here).',
+
   'holidaysCardSub': '{days} statutory days · {extra} make-up workdays',
   'holidaysDaysShort': '{days} d',
   'holidaysExtraNote': '{extra} make-up workdays (weekend shifts, counted as workdays)',
@@ -290,8 +309,6 @@ function formFromConfig(config) {
     lunchStart: String(config.lunchStart == null ? '' : config.lunchStart),
     lunchEnd: String(config.lunchEnd == null ? '' : config.lunchEnd),
     lunchPaid: config.lunchPaid === true,
-    holidaysText: (config.holidays || []).join('\n'),
-    extraWorkdaysText: (config.extraWorkdays || []).join('\n'),
   };
 }
 
@@ -306,8 +323,6 @@ function patchFromForm(form) {
     lunchStart: String(form.lunchStart || '').trim(),
     lunchEnd: String(form.lunchEnd || '').trim(),
     lunchPaid: Boolean(form.lunchPaid),
-    holidays: splitDateLines(form.holidaysText),
-    extraWorkdays: splitDateLines(form.extraWorkdaysText),
   };
 }
 
@@ -734,7 +749,7 @@ function DetailsFooter(props) {
   ]);
 }
 
-/** 节假日卡片：2026 年七个法定假日区段 + 调休上班日统计（数据来自 holidays.mjs）。 */
+/** 节假日卡片：2026 官方 / 2027 预估两段，七段假日区段 + 调休上班日统计。 */
 const HOLIDAY_LABEL_KEYS = {
   newYear: 'holidayNewYear',
   spring: 'holidaySpring',
@@ -749,35 +764,58 @@ function HolidaysCard(props) {
   const t = props.t;
   const source = props.holidaySource || HOLIDAY_SOURCE;
   const extra = Array.isArray(props.extraWorkdays) ? props.extraWorkdays : [];
-  const totalDays = HOLIDAY_BLOCKS.reduce((sum, block) => sum + block.days, 0);
+  const countYear = (year) => extra.filter((key) => String(key).startsWith(`${year}-`)).length;
   const shortDate = (key) => key.slice(5).replace('-', '/');
-  return React.createElement('div', {
-    style: {
-      background: C.layer1,
-      border: `1px solid ${C.border1}`,
-      borderRadius: 12,
-      padding: '10px 12px',
+  const sections = [
+    {
+      key: 'official',
+      label: t('holidays2026Label'),
+      blocks: HOLIDAY_BLOCKS,
+      estimated: false,
+      extraCount: countYear(2026),
+      tag: null,
     },
-  }, [
+    {
+      key: 'estimate',
+      label: t('holidays2027Label'),
+      blocks: HOLIDAY_BLOCKS_2027_ESTIMATED,
+      estimated: true,
+      extraCount: countYear(2027),
+      tag: t('holidayEstimateTag'),
+    },
+  ];
+  const sumDays = (blocks) => blocks.reduce((sum, block) => sum + block.days, 0);
+  const renderSection = (section) => React.createElement('div', { key: section.key, style: { marginTop: section.key === 'official' ? 8 : 12 } }, [
     React.createElement('div', {
       key: 'head',
-      style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
+      style: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 },
     }, [
-      React.createElement('span', { key: 't', style: { fontSize: 12.5, fontWeight: 700, color: C.label2, letterSpacing: '.2px' } },
-        t('holidaysCardTitle')),
-      React.createElement('span', { key: 's', style: { fontSize: 10.5, color: C.label3, ...NUM } },
-        t('holidaysCardSub').replace('{days}', String(totalDays)).replace('{extra}', String(extra.length))),
+      React.createElement('span', { key: 'l', style: { fontSize: 11.5, fontWeight: 700, color: C.label2 } }, section.label),
+      section.tag
+        ? React.createElement('span', {
+          key: 'tag',
+          style: {
+            fontSize: 9.5, fontWeight: 700, color: C.label2,
+            border: `1px dashed color-mix(in srgb, ${GOLD_TINT} 60%, transparent)`,
+            borderRadius: 999, padding: '0 6px', lineHeight: 1.6,
+          },
+        }, section.tag)
+        : null,
+      React.createElement('span', { key: 's', style: { marginLeft: 'auto', fontSize: 10, color: C.label3, ...NUM } },
+        t('holidaysCardSub').replace('{days}', String(sumDays(section.blocks))).replace('{extra}', String(section.extraCount))),
     ]),
     React.createElement('div', {
       key: 'grid',
-      style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 7, marginTop: 8 },
-    }, HOLIDAY_BLOCKS.map((block) => React.createElement('div', {
+      style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 7, marginTop: 6 },
+    }, section.blocks.map((block) => React.createElement('div', {
       key: block.id,
       style: {
-        border: `1px solid ${C.border1}`,
+        border: section.estimated
+          ? `1px dashed color-mix(in srgb, ${GOLD_TINT} 40%, ${C.border1})`
+          : `1px solid ${C.border1}`,
         borderRadius: 9,
         padding: '6px 8px',
-        background: `color-mix(in srgb, ${GOLD_TINT} 6%, transparent)`,
+        background: `color-mix(in srgb, ${GOLD_TINT} ${section.estimated ? 3 : 6}%, transparent)`,
       },
     }, [
       React.createElement('div', {
@@ -798,20 +836,41 @@ function HolidaysCard(props) {
       React.createElement('div', { key: 'r', style: { fontSize: 10, color: C.label3, marginTop: 2, ...NUM } },
         `${shortDate(block.from)} – ${shortDate(block.to)}`),
     ]))),
+    section.estimated
+      ? React.createElement('div', {
+        key: 'est-note',
+        style: { marginTop: 6, fontSize: 10.5, color: C.label3, lineHeight: 1.5 },
+      }, `⚠ ${t('holidayEstimateNote')}`)
+      : null,
+  ]);
+  return React.createElement('div', {
+    style: {
+      background: C.layer1,
+      border: `1px solid ${C.border1}`,
+      borderRadius: 12,
+      padding: '10px 12px',
+    },
+  }, [
     React.createElement('div', {
-      key: 'foot',
-      style: { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, marginTop: 8, fontSize: 10.5, color: C.label3 },
+      key: 'title',
+      style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
     }, [
-      React.createElement('span', { key: 'x' }, t('holidaysExtraNote').replace('{extra}', String(extra.length))),
+      React.createElement('span', { key: 't', style: { fontSize: 12.5, fontWeight: 700, color: C.label2, letterSpacing: '.2px' } },
+        t('holidaysCardTitle')),
       React.createElement('a', {
         key: 'a',
         href: source.url,
         target: '_blank',
         rel: 'noreferrer',
         title: source.title,
-        style: { color: C.brand, textDecoration: 'none', fontWeight: 600, marginLeft: 'auto' },
+        style: { fontSize: 10.5, color: C.brand, textDecoration: 'none', fontWeight: 600 },
       }, `${source.year} ${t('holidaySourceLink')} ↗`),
     ]),
+    sections.map(renderSection),
+    React.createElement('div', {
+      key: 'foot',
+      style: { marginTop: 8, fontSize: 10.5, color: C.label3 },
+    }, t('holidaysExtraNote').replace('{extra}', String(extra.length))),
   ]);
 }
 
@@ -871,39 +930,6 @@ function SettingsSection(props) {
     React.createElement('span', { key: 'l' }, t(labelKey)),
   ]);
 
-  const textareaField = (field, labelKey, rows = 5) => {
-    const list = splitDateLines(form[field]);
-    return React.createElement('label', {
-      key: field,
-      style: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 220px', minWidth: 200 },
-    }, [
-      React.createElement('span', {
-        key: 'l',
-        style: { ...labelStyle, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
-      }, [
-        React.createElement('span', { key: 'k' }, t(labelKey)),
-        React.createElement('span', {
-          key: 'n',
-          style: { fontSize: 10, color: C.label3, fontWeight: 400, ...NUM },
-        }, t('itemsCount').replace('{n}', String(list.length))),
-      ]),
-      React.createElement('textarea', {
-        key: 'i',
-        rows,
-        value: form[field],
-        spellCheck: false,
-        onChange: (event) => setField(field, event.target.value),
-        style: {
-          ...inputStyle,
-          resize: 'vertical',
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-          lineHeight: 1.5,
-          fontSize: 12,
-        },
-      }),
-    ]);
-  };
-
   return React.createElement('details', {
     style: { background: C.layer1, border: `1px solid ${C.border1}`, borderRadius: 12, padding: '11px 13px' },
   }, [
@@ -915,6 +941,10 @@ function SettingsSection(props) {
       key: 'hint',
       style: { fontSize: 10.5, color: C.label3, margin: '5px 0 10px' },
     }, t('settingsHint')),
+    React.createElement('div', {
+      key: 'dataNote',
+      style: { fontSize: 10.5, color: C.label3, margin: '-4px 0 10px', lineHeight: 1.55 },
+    }, t('settingsDataNote')),
     React.createElement('div', {
       key: 'fields',
       style: { display: 'flex', flexWrap: 'wrap', gap: 9 },
@@ -928,13 +958,6 @@ function SettingsSection(props) {
       checkField('lunchPaid', 'lunchPaidField'),
     ]),
     React.createElement('div', {
-      key: 'lists',
-      style: { display: 'flex', flexWrap: 'wrap', gap: 9, marginTop: 9 },
-    }, [
-      textareaField('holidaysText', 'holidaysField', 8),
-      textareaField('extraWorkdaysText', 'extraWorkdaysField', 6),
-    ]),
-    React.createElement('div', {
       key: 'actions',
       style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 11 },
     }, [
@@ -945,7 +968,8 @@ function SettingsSection(props) {
         disabled: save.status === 'saving',
         style: {
           border: 'none',
-          color: 'var(--dsw-alias-brand-primary-foreground, #fff)',
+          color: '#fff',
+          textShadow: '0 1px 1px rgba(0,0,0,.18)',
           background: save.status === 'saving' ? `color-mix(in srgb, ${C.brand} 60%, transparent)` : C.brand,
           borderRadius: 8,
           padding: '7px 18px',
@@ -999,6 +1023,7 @@ function NiumaPanel(props) {
    * 只影响换算展示，不影响顶部「今日已赚」计数器（计数器永远按今天算）。
    */
   const viewYear = Number(String(snap && snap.dateKey ? snap.dateKey : '').slice(0, 4)) || new Date().getFullYear();
+  const yearEstimated = viewYear === HOLIDAY_ESTIMATE_2027.year;
   const yearData = React.useMemo(() => yearSummary(cfg, viewYear), [cfg, viewYear]);
   const [view, setView] = React.useState('current');
   const selectedMonth = view.startsWith('m') ? yearData.months[Number(view.slice(1)) - 1] : null;
@@ -1018,8 +1043,9 @@ function NiumaPanel(props) {
       { key: 'yearWorkdays', label: t('yearWorkdays'), value: `${yearData.totalWorkdays}${t('dayUnit')}` },
       { key: 'yearIncome', label: t('yearIncome'), value: money(yearData.annualIncome, 2) },
     ];
-    viewHint = `${t('yearHint').replace('{year}', String(viewYear)).replace('{workdays}', String(yearData.totalWorkdays))} · ${t('viewOnlyHint')}`;
-    viewNote = maxHolidayText;
+    viewHint = `${t('yearHint').replace('{year}', String(viewYear)).replace('{workdays}', String(yearData.totalWorkdays))} · ${t('viewOnlyHint')}`
+      + (yearEstimated ? ` · ${t('holidayEstimateShort')}` : '');
+    viewNote = yearEstimated ? t('holidayEstimateNote') : maxHolidayText;
   } else if (selectedMonth) {
     viewCards = [
       { key: 'monthlyWage', label: t('monthlyWage'), value: money(selectedMonth.monthlySalary, 2) },
@@ -1033,10 +1059,13 @@ function NiumaPanel(props) {
       .replace('{year}', String(viewYear))
       .replace('{month}', String(selectedMonth.month))
       .replace('{workdays}', String(selectedMonth.workdays))
-      .replace('{holidays}', String(selectedMonth.holidayDays))} · ${t('viewOnlyHint')}`;
-    viewNote = selectedMonth.month === maxHolidayMonth.month
-      ? `★ ${t('maxHolidayThis').replace('{days}', String(maxHolidayMonth.holidayDays))}`
-      : maxHolidayText;
+      .replace('{holidays}', String(selectedMonth.holidayDays))} · ${t('viewOnlyHint')}`
+      + (yearEstimated ? ` · ${t('holidayEstimateShort')}` : '');
+    viewNote = yearEstimated
+      ? t('holidayEstimateNote')
+      : (selectedMonth.month === maxHolidayMonth.month
+        ? `★ ${t('maxHolidayThis').replace('{days}', String(maxHolidayMonth.holidayDays))}`
+        : maxHolidayText);
   } else {
     viewCards = RATE_CARDS.map((spec) => ({
       key: spec.key,
