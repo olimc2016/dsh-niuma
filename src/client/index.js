@@ -5,7 +5,9 @@ import {
   earnedToday,
   formatDuration,
   formatMoney,
+  monthSummary,
   normalizeConfig,
+  yearSummary,
 } from '../core.mjs';
 import { HOLIDAY_SOURCE } from '../holidays.mjs';
 
@@ -57,6 +59,17 @@ const CARD = {
 
 /** 数字：等宽数位 + 不换行（每秒跳动时宽度不抖）。 */
 const NUM = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
+
+/** 金色金额：渐变金属质感 + 单色回退（不支持 background-clip:text 时显示金色）。 */
+const GOLD = {
+  color: '#D9A441',
+  backgroundImage: 'linear-gradient(180deg, #FFE9A8 0%, #F2C14E 40%, #D79A2B 72%, #B87A16 100%)',
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  textShadow: '0 1px 0 rgba(0,0,0,.05)',
+};
+const GOLD_TINT = '#E7B84D';
 
 /** 状态徽标配色：颜色与语义一致，深浅色都靠主题变量。 */
 const STATUS_META = {
@@ -120,9 +133,28 @@ const zh = {
   'saveFailed': '保存失败：',
   'dayUnit': '天',
   'hourUnit': '小时',
+  'viewLabel': '查看',
+  'viewCurrent': '本月',
+  'viewYear': '全年平均',
+  'monthUnit': '月',
+  'holidayShort': '假',
+  'currentHint': '按每月 {days} 个工作日、每天 {hours} 小时计',
+  'monthHint': '{year} 年 {month} 月 · 工作日 {workdays} 天 · 法定假日 {holidays} 天',
+  'yearHint': '{year} 全年 · {workdays} 个工作日 · 按年收入折算',
+  'viewOnlyHint': '仅换算，不影响今日计数器',
+  'yearWorkdays': '全年工作日',
+  'yearIncome': '全年收入',
+  'averageDaily': '平均日薪',
+  'averageHourly': '平均时薪',
+  'averageMinute': '平均分薪',
+  'averageSecond': '平均秒薪',
+  'monthWorkdaysCard': '工作日',
+  'maxHolidayBadge': '全年假日最多',
+  'maxHolidayNote': '全年假日最多：{month} 月（法定假日 {days} 天）',
+  'maxHolidayThis': '全年假日最多的月份（法定假日 {days} 天）',
   'sectionRates': '工资换算',
   'sectionRatesHint': '按每月 {days} 个工作日、每天 {hours} 小时计',
-  'sectionDetail': '口径明细',
+  'sectionDetail': '今日口径明细',
   'restHint': '今天休息，好好躺平',
   'liveNow': '实时',
 };
@@ -177,9 +209,28 @@ const en = {
   'saveFailed': 'Save failed: ',
   'dayUnit': 'd',
   'hourUnit': 'h',
+  'viewLabel': 'View',
+  'viewCurrent': 'This month',
+  'viewYear': 'Year average',
+  'monthUnit': 'M',
+  'holidayShort': 'hol.',
+  'currentHint': '{days} workdays / month · {hours} h / day',
+  'monthHint': '{year}-{month} · {workdays} workdays · {holidays} statutory holidays',
+  'yearHint': '{year} · {workdays} workdays · averaged over the year',
+  'viewOnlyHint': 'Conversion only — today\'s ticker is unaffected',
+  'yearWorkdays': 'Workdays / year',
+  'yearIncome': 'Annual income',
+  'averageDaily': 'Avg per day',
+  'averageHourly': 'Avg per hour',
+  'averageMinute': 'Avg per minute',
+  'averageSecond': 'Avg per second',
+  'monthWorkdaysCard': 'Workdays',
+  'maxHolidayBadge': 'Most holidays',
+  'maxHolidayNote': 'Most holidays: month {month} ({days} statutory days)',
+  'maxHolidayThis': 'The month with the most holidays ({days} statutory days)',
   'sectionRates': 'Pay rates',
   'sectionRatesHint': '{days} workdays / month · {hours} h / day',
-  'sectionDetail': 'Calculation basis',
+  'sectionDetail': "Today's basis",
   'restHint': 'Day off — enjoy it',
   'liveNow': 'LIVE',
 };
@@ -386,7 +437,6 @@ function HeroCard(props) {
   const percentText = `${(progress * 100).toFixed(1)}%`;
   const live = snap.status === 'working';
   const rest = snap.status === 'rest';
-  const amountColor = rest ? C.label3 : (snap.status === 'lunch' ? C.brand : C.ok);
   const heroBackground = 'linear-gradient(135deg, '
     + 'color-mix(in srgb, ' + C.brand + ' 17%, ' + C.layer1 + ') 0%, '
     + C.layer1 + ' 58%, ' + C.layer1 + ' 100%)';
@@ -396,7 +446,7 @@ function HeroCard(props) {
       overflow: 'hidden',
       borderRadius: 18,
       padding: '16px 18px 14px',
-      border: `1px solid color-mix(in srgb, ${C.brand} 30%, ${C.border1})`,
+      border: `1px solid color-mix(in srgb, ${GOLD_TINT} 34%, ${C.border1})`,
       background: heroBackground,
       boxShadow: '0 12px 30px rgba(0,0,0,.10)',
       boxSizing: 'border-box',
@@ -408,7 +458,7 @@ function HeroCard(props) {
       'aria-hidden': 'true',
       style: {
         position: 'absolute', right: -52, top: -72, width: 188, height: 188, borderRadius: '50%',
-        background: `radial-gradient(circle, color-mix(in srgb, ${C.brand} 26%, transparent) 0%, transparent 68%)`,
+        background: `radial-gradient(circle, color-mix(in srgb, ${GOLD_TINT} 30%, transparent) 0%, transparent 68%)`,
         pointerEvents: 'none',
       },
     }),
@@ -444,7 +494,9 @@ function HeroCard(props) {
         key: 'val',
         style: {
           fontSize: 46, lineHeight: 1.12, fontWeight: 800, letterSpacing: '-1.2px',
-          color: amountColor, ...NUM,
+          ...GOLD,
+          ...NUM,
+          ...(rest ? { opacity: 0.62 } : {}),
         },
       }, formatMoney(snap.todayEarned, 4)),
     ]),
@@ -534,39 +586,73 @@ const RATE_CARDS = [
   { key: 'monthlyWage', label: 'monthlyWage', digits: 2 },
 ];
 
+/** 工资换算网格：由调用方给出 {key,label,value,accent} 卡片（本月 / 指定月 / 全年平均三种视角）。 */
 function RatesGrid(props) {
-  const t = props.t;
-  const rates = props.rates;
+  const cards = Array.isArray(props.cards) ? props.cards : [];
   return React.createElement('div', {
     style: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 },
-  }, RATE_CARDS.map((spec, index) => {
-    const accent = index === 0;
+  }, cards.map((card, index) => {
+    const accent = card.accent === true;
     return React.createElement('div', {
-      key: spec.key,
+      key: card.key,
       'data-stat': `stat-${index}`,
       style: {
         ...CARD,
         padding: '10px 11px',
         borderRadius: 12,
         ...(accent ? {
-          border: `1px solid color-mix(in srgb, ${C.brand} 42%, ${C.border1})`,
-          background: `color-mix(in srgb, ${C.brand} 8%, ${C.layer1})`,
+          border: `1px solid color-mix(in srgb, ${GOLD_TINT} 46%, ${C.border1})`,
+          background: `color-mix(in srgb, ${GOLD_TINT} 9%, ${C.layer1})`,
         } : {}),
       },
     }, [
       React.createElement('div', {
         key: 'l',
-        style: { fontSize: 11, color: accent ? C.brand : C.label3, fontWeight: accent ? 600 : 400 },
-      }, t(spec.label)),
+        style: { fontSize: 11, color: accent ? C.label2 : C.label3, fontWeight: accent ? 600 : 400 },
+      }, card.label),
       React.createElement('div', {
         key: 'v',
         style: {
           fontSize: 15.5, fontWeight: 700, letterSpacing: '-.2px',
-          color: accent ? C.brand : C.label, marginTop: 2, ...NUM,
+          color: accent ? C.label : C.label, marginTop: 2, ...NUM,
         },
-      }, money(rates[spec.key], spec.digits)),
+      }, card.value),
     ]);
   }));
+}
+
+/** 月份 / 全年视角选择器（原生 select，深浅色都用主题变量）。 */
+function PeriodSelect(props) {
+  const t = props.t;
+  const year = props.year;
+  const months = props.months;
+  const style = {
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    border: `1px solid ${C.border}`,
+    background: C.layer2,
+    color: C.label,
+    borderRadius: 8,
+    padding: '4px 9px',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    outline: 'none',
+    maxWidth: 220,
+  };
+  return React.createElement('select', {
+    value: props.value,
+    'aria-label': t('viewLabel'),
+    onChange: (event) => props.onChange(event.target.value),
+    style,
+  }, [
+    React.createElement('option', { key: 'current', value: 'current' }, t('viewCurrent')),
+    ...months.map((month) => React.createElement('option', {
+      key: `m${month.month}`,
+      value: `m${month.month}`,
+    }, `${month.month}${t('monthUnit')} · ${month.workdays}${t('dayUnit')} · ${t('holidayShort')}${month.holidayDays}`)),
+    React.createElement('option', { key: 'year', value: 'year' }, `${year} ${t('viewYear')}`),
+  ]);
 }
 
 /** 口径明细：月薪 / 工作日 / 日工时 / 今日目标 / 本月已赚 + 节假日来源。 */
@@ -785,6 +871,62 @@ function NiumaPanel(props) {
   const rates = snap && snap.rates ? snap.rates : computeRates(cfg, snap && snap.dateKey);
   const baseForm = React.useMemo(() => formFromConfig(cfg), [cfg]);
 
+  /**
+   * 「工资换算」视角：本月（跟随今日口径）/ 指定月份 / 全年平均。
+   * 只影响换算展示，不影响顶部「今日已赚」计数器（计数器永远按今天算）。
+   */
+  const viewYear = Number(String(snap && snap.dateKey ? snap.dateKey : '').slice(0, 4)) || new Date().getFullYear();
+  const yearData = React.useMemo(() => yearSummary(cfg, viewYear), [cfg, viewYear]);
+  const [view, setView] = React.useState('current');
+  const selectedMonth = view.startsWith('m') ? yearData.months[Number(view.slice(1)) - 1] : null;
+  const maxHolidayMonth = yearData.maxHolidayMonth;
+  const maxHolidayText = t('maxHolidayNote')
+    .replace('{month}', String(maxHolidayMonth.month))
+    .replace('{days}', String(maxHolidayMonth.holidayDays));
+  let viewCards;
+  let viewHint;
+  let viewNote;
+  if (view === 'year') {
+    viewCards = [
+      { key: 'avgDaily', label: t('averageDaily'), value: money(yearData.averageDailyWage, 2), accent: true },
+      { key: 'avgHourly', label: t('averageHourly'), value: money(yearData.averageHourlyWage, 2) },
+      { key: 'avgMinute', label: t('averageMinute'), value: money(yearData.averageMinuteWage, 4) },
+      { key: 'avgSecond', label: t('averageSecond'), value: money(yearData.averageSecondWage, 4) },
+      { key: 'yearWorkdays', label: t('yearWorkdays'), value: `${yearData.totalWorkdays}${t('dayUnit')}` },
+      { key: 'yearIncome', label: t('yearIncome'), value: money(yearData.annualIncome, 2) },
+    ];
+    viewHint = `${t('yearHint').replace('{year}', String(viewYear)).replace('{workdays}', String(yearData.totalWorkdays))} · ${t('viewOnlyHint')}`;
+    viewNote = maxHolidayText;
+  } else if (selectedMonth) {
+    viewCards = [
+      { key: 'monthlyWage', label: t('monthlyWage'), value: money(selectedMonth.monthlySalary, 2) },
+      { key: 'dailyWage', label: t('dailyWage'), value: money(selectedMonth.dailyWage, 2), accent: true },
+      { key: 'hourlyWage', label: t('hourlyWage'), value: money(selectedMonth.hourlyWage, 2) },
+      { key: 'minuteWage', label: t('minuteWage'), value: money(selectedMonth.minuteWage, 4) },
+      { key: 'secondWage', label: t('secondWage'), value: money(selectedMonth.secondWage, 4) },
+      { key: 'monthWorkdays', label: t('monthWorkdaysCard'), value: `${selectedMonth.workdays}${t('dayUnit')}` },
+    ];
+    viewHint = `${t('monthHint')
+      .replace('{year}', String(viewYear))
+      .replace('{month}', String(selectedMonth.month))
+      .replace('{workdays}', String(selectedMonth.workdays))
+      .replace('{holidays}', String(selectedMonth.holidayDays))} · ${t('viewOnlyHint')}`;
+    viewNote = selectedMonth.month === maxHolidayMonth.month
+      ? `★ ${t('maxHolidayThis').replace('{days}', String(maxHolidayMonth.holidayDays))}`
+      : maxHolidayText;
+  } else {
+    viewCards = RATE_CARDS.map((spec) => ({
+      key: spec.key,
+      label: t(spec.label),
+      value: money(rates[spec.key], spec.digits),
+      accent: spec.key === 'secondWage',
+    }));
+    viewHint = t('currentHint')
+      .replace('{days}', String(rates.monthlyWorkdays))
+      .replace('{hours}', trimNumber(rates.paidHours, 2));
+    viewNote = maxHolidayText;
+  }
+
   // 设置表单草稿：null = 还没改过，直接显示当前配置。
   const [draft, setDraft] = React.useState(null);
   const [save, setSave] = React.useState({ status: 'idle', errors: [], message: '' });
@@ -920,14 +1062,48 @@ function NiumaPanel(props) {
 
     React.createElement(HeroCard, { key: 'hero', t, snap }),
     React.createElement(CountdownRow, { key: 'countdown', t, snap }),
-    React.createElement(SectionTitle, {
-      key: 'ratesTitle',
-      title: t('sectionRates'),
-      hint: t('sectionRatesHint')
-        .replace('{days}', String(rates.monthlyWorkdays))
-        .replace('{hours}', trimNumber(rates.paidHours, 2)),
-    }),
-    React.createElement(RatesGrid, { key: 'rates', t, rates }),
+    React.createElement('div', {
+      key: 'ratesHead',
+      style: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 8, flexWrap: 'wrap', margin: '2px 1px -1px',
+      },
+    }, [
+      React.createElement('span', {
+        key: 't',
+        style: { fontSize: 12.5, fontWeight: 700, color: C.label2, letterSpacing: '.2px' },
+      }, t('sectionRates')),
+      React.createElement(PeriodSelect, {
+        key: 'period',
+        t,
+        value: view,
+        onChange: setView,
+        year: viewYear,
+        months: yearData.months,
+      }),
+    ]),
+    React.createElement('div', {
+      key: 'ratesHint',
+      style: { fontSize: 10.5, color: C.label3, ...NUM },
+    }, viewHint),
+    React.createElement(RatesGrid, { key: 'rates', cards: viewCards }),
+    viewNote
+      ? React.createElement('div', {
+        key: 'ratesNote',
+        style: { fontSize: 10.5, color: C.label3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+      }, [
+        React.createElement('span', {
+          key: 'badge',
+          style: {
+            color: C.label2, fontWeight: 600,
+            background: `color-mix(in srgb, ${GOLD_TINT} 14%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${GOLD_TINT} 32%, transparent)`,
+            borderRadius: 999, padding: '1px 8px',
+          },
+        }, t('maxHolidayBadge')),
+        React.createElement('span', { key: 'txt' }, viewNote),
+      ])
+      : null,
     React.createElement(SectionTitle, { key: 'detailTitle', title: t('sectionDetail') }),
     React.createElement(DetailsFooter, { key: 'footer', t, snap, holidaySource }),
     React.createElement(SettingsSection, {

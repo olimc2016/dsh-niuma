@@ -26,6 +26,8 @@ const open = args.includes('--open');
 const screenshotIndex = args.indexOf('--screenshot');
 const screenshotPath = screenshotIndex >= 0 ? args[screenshotIndex + 1] : null;
 const expand = args.includes('--expand');
+const viewIndex = args.indexOf('--view');
+const initialView = viewIndex >= 0 ? String(args[viewIndex + 1] || 'current') : 'current';
 
 const cacheDir = join(homedir(), '.dsh', 'tools', 'preview-cache', 'react-18.3.1');
 const CDN = {
@@ -104,7 +106,7 @@ function themeVars(record) {
     .join('\n      ');
 }
 
-function buildHtml(reactUmd, reactDomUmd, bundle, expand) {
+function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView) {
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -153,6 +155,7 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand) {
   const React = window.React;
   const ReactDOM = window.ReactDOM;
   const EXPAND = ${expand ? 'true' : 'false'};
+  const INITIAL_VIEW = ${JSON.stringify(initialView)};
   const ZH = (key) => key;
   function mount(rootId) {
     const root = ReactDOM.createRoot(document.getElementById(rootId));
@@ -179,6 +182,15 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand) {
     const t = (key) => (zh[key] == null ? ZH(key) : zh[key]);
     root.render(React.createElement(main.component, { t, locale: 'zh' }));
     if (EXPAND) setTimeout(() => { document.querySelectorAll('details').forEach((d) => { d.open = true; }); }, 60);
+    if (INITIAL_VIEW && INITIAL_VIEW !== 'current') {
+      setTimeout(() => {
+        // 浅色/深色两个根各挂了一份面板：两个 select 都要切，否则截图两边状态不一致
+        document.querySelectorAll('select').forEach((select) => {
+          select.value = INITIAL_VIEW;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      }, 120);
+    }
   }
   window.addEventListener('error', (event) => {
     const pre = document.createElement('pre');
@@ -198,7 +210,7 @@ const bundle = readFileSync(join(repo, 'lib', 'client.js'), 'utf8');
 const outDir = join(tmpdir(), `dsh-niuma-preview-${process.pid}`);
 mkdirSync(outDir, { recursive: true });
 const htmlPath = join(outDir, 'index.html');
-writeFileSync(htmlPath, buildHtml(react.react, react.reactDom, bundle, expand));
+writeFileSync(htmlPath, buildHtml(react.react, react.reactDom, bundle, expand, initialView));
 console.log(`preview: file://${htmlPath}`);
 
 if (screenshotPath) {

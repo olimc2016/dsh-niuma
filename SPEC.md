@@ -125,7 +125,23 @@ export function earnedToday(cfg, now /*Date*/): {
 }
 export function formatMoney(value, digits = 2): string  // 千分位 + 固定小数位
 export function formatDuration(seconds): string         // '1小时 23分 45秒' / '45秒'
+export function holidayDaysInMonth(year, monthIndex, cfg): number
+export function monthSummary(cfg, year, monthIndex): {
+  year, monthIndex, month, daysInMonth, workdays, holidayDays, restDays,
+  monthlySalary, paidMinutes, paidHours, dailyWage, hourlyWage, minuteWage, secondWage
+}
+export function yearSummary(cfg, year): {
+  year, months /*12 个 monthSummary*/, totalWorkdays, totalHolidayDays,
+  monthlySalary, annualIncome, averageMonthlyWage, averageDailyWage,
+  averageHourlyWage, averageMinuteWage, averageSecondWage,
+  maxHolidayMonth /*假日最多的月（并列时工作日更少者优先）*/
+}
 ```
+
+「月度 / 全年视角」的换算口径：
+- 选某月：日工资 = 实收月薪 ÷ 该月工作日；时/分/秒工资再按日有效工时逐级除
+- 选全年平均：年收入 = 实收月薪 × 12；平均日薪 = 年收入 ÷ 全年工作日；平均时薪 = 平均日薪 ÷ 日有效工时
+- 「全年假日最多」= 该年 12 个月里法定节假日天数最多的月份（并列时取工作日更少的、再取更早的月份）
 
 `formatMoney` 规则：金额 `<1000` 用 `digits` 位小数（默认 2；计数器建议传 4）；`>=1000` 同样固定小数位但加千分位。
 
@@ -199,6 +215,9 @@ export function apply(ctx) {
 - 午休算工时（lunchPaid=true）→ 日有效工时 = 9h，时工资变小；12:30 仍在 working
 - 午休停用（lunchEnabled=false）→ 日有效工时 = 9h
 - 「节假日不算让日工资变高」：把 10 月国庆 7 天从 holidays 移除后，10 月工作日 25 天，日工资变小（回归测试断言两种口径的比值）
+- 2026 各月工作日：`[21,16,22,21,19,21,23,21,22,18,21,23]`（合计 **248 天**）；各月法定假日：`[3,9,0,3,5,3,0,0,3,7,0,0]`（合计 **33 天**）
+- 全年平均（月薪 22000）：年收入 264000，平均日薪 = 264000 ÷ 248 ≈ **1064.5161**，平均时薪 ≈ **133.0645**
+- 假日最多月份 = **2 月**（9 天法定假、16 个工作日）；去掉 2 月节假日后期望变成 10 月（回归测试断言）
 
 ## 9. 非目标（v0.1 不做）
 

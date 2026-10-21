@@ -431,3 +431,91 @@ export function isStatutoryHoliday(key, config) {
 }
 
 export { DAY_MS };
+
+/* ------------------------------------------------------------------ *
+ * 月度 / 全年视角（只影响「查看」，不影响今日计数器）
+ * ------------------------------------------------------------------ */
+
+/** 某年某月里配置中的法定节假日日期数（按日期键前缀统计，无论是否落在周末）。 */
+export function holidayDaysInMonth(year, monthIndex, config) {
+  const prefix = `${year}-${String(monthIndex + 1).padStart(2, '0')}-`;
+  return (config.holidays ?? DEFAULTS.holidays).filter((key) => key.startsWith(prefix)).length;
+}
+
+/**
+ * 单月概览：工作日数、法定假日数、日/时/分/秒工资等。
+ *
+ * 口径与今日计数一致：月薪 / 当月工作日 = 日工资（节假日不算工作日 → 日工资更高）。
+ * @param {object} config
+ * @param {number} year
+ * @param {number} monthIndex 0-11
+ * @returns {object}
+ */
+export function monthSummary(config, year, monthIndex) {
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const workdays = workdaysInMonth(year, monthIndex, config);
+  const holidayDays = holidayDaysInMonth(year, monthIndex, config);
+  const monthlySalary = Number(config.monthlySalary) || 0;
+  const paidMinutes = paidMinutesPerDay(config);
+  const paidHours = paidMinutes / 60;
+  const dailyWage = workdays > 0 ? monthlySalary / workdays : 0;
+  const hourlyWage = paidHours > 0 ? dailyWage / paidHours : 0;
+  return {
+    year,
+    monthIndex,
+    month: monthIndex + 1,
+    daysInMonth,
+    workdays,
+    holidayDays,
+    restDays: daysInMonth - workdays,
+    monthlySalary,
+    paidMinutes,
+    paidHours,
+    dailyWage,
+    hourlyWage,
+    minuteWage: hourlyWage / 60,
+    secondWage: hourlyWage / 3600,
+  };
+}
+
+/**
+ * 全年概览：12 个月汇总 + 全年平均工资 + 法定假日最多的月份。
+ *
+ * 「全年平均」口径：年收入 = 实收月薪 × 12；平均日薪 = 年收入 / 全年工作日；
+ * 平均时薪 = 平均日薪 / 日有效工时。平均月薪 = 实收月薪（不因月份浮动）。
+ * @param {object} config
+ * @param {number} year
+ * @returns {object}
+ */
+export function yearSummary(config, year) {
+  const months = Array.from({ length: 12 }, (_, monthIndex) => monthSummary(config, year, monthIndex));
+  const totalWorkdays = months.reduce((sum, item) => sum + item.workdays, 0);
+  const totalHolidayDays = months.reduce((sum, item) => sum + item.holidayDays, 0);
+  const monthlySalary = Number(config.monthlySalary) || 0;
+  const annualIncome = monthlySalary * 12;
+  const paidMinutes = paidMinutesPerDay(config);
+  const paidHours = paidMinutes / 60;
+  const averageDailyWage = totalWorkdays > 0 ? annualIncome / totalWorkdays : 0;
+  const averageHourlyWage = paidHours > 0 ? averageDailyWage / paidHours : 0;
+  const maxHolidayMonth = months.reduce((best, item) => {
+    if (item.holidayDays !== best.holidayDays) return item.holidayDays > best.holidayDays ? item : best;
+    if (item.workdays !== best.workdays) return item.workdays < best.workdays ? item : best;
+    return item.month < best.month ? item : best;
+  }, months[0]);
+  return {
+    year,
+    months,
+    totalWorkdays,
+    totalHolidayDays,
+    paidMinutes,
+    paidHours,
+    monthlySalary,
+    annualIncome,
+    averageMonthlyWage: monthlySalary,
+    averageDailyWage,
+    averageHourlyWage,
+    averageMinuteWage: averageHourlyWage / 60,
+    averageSecondWage: averageHourlyWage / 3600,
+    maxHolidayMonth,
+  };
+}

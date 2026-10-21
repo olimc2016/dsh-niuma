@@ -8,6 +8,7 @@ import {
   DEFAULTS, parseHm, formatHm, dateKeyOf, parseDateKey, normalizeConfig, validateConfig,
   isWorkday, workdaysInMonth, workdaysInWeek, paidMinutesPerDay, computeRates,
   earnedToday, formatMoney, formatDuration, workdaysOfMonth, isStatutoryHoliday,
+  monthSummary, yearSummary, holidayDaysInMonth,
 } from '../src/core.mjs';
 
 let passed = 0;
@@ -87,6 +88,49 @@ eq('2026-10 工作日 18 天（国庆 7 天 + 10-10 调休）', workdaysInMonth(
 eq('2026-10 工作日日期数 = 18', workdaysOfMonth(2026, 9, cfg).length, 18);
 eq('本周（2026-10-21 所在周）5 个工作日', workdaysInWeek('2026-10-21', cfg), 5);
 eq('本周（2026-10-01 所在周）工作日 3 天（9/28~9/30 上班，10/1~10/4 放假/周末）', workdaysInWeek('2026-10-01', cfg), 3);
+
+/* ---------------- 月度 / 全年口径（2026 实际排班） ---------------- */
+/** 独立抄录的 2026 年实际工作日（按官方放假安排 + 调休上班日逐月核对） */
+const EXPECTED_MONTH_WORKDAYS = [21, 16, 22, 21, 19, 21, 23, 21, 22, 18, 21, 23];
+/** 独立抄录的 2026 年各月法定节假日天数（元旦 3 / 春节 9 / 清明 3 / 五一 5 / 端午 3 / 中秋 3 / 国庆 7） */
+const EXPECTED_MONTH_HOLIDAYS = [3, 9, 0, 3, 5, 3, 0, 0, 3, 7, 0, 0];
+/** 本区块统一用 22000 月薪（工资率区块的 cfg22 在后面才定义） */
+const cfg22m = cfgOf({ monthlySalary: 22000 });
+for (let month = 0; month < 12; month += 1) {
+  eq(`2026-${String(month + 1).padStart(2, '0')} 工作日`, workdaysInMonth(2026, month, cfg), EXPECTED_MONTH_WORKDAYS[month]);
+  eq(`2026-${String(month + 1).padStart(2, '0')} 法定假日`, holidayDaysInMonth(2026, month, cfg), EXPECTED_MONTH_HOLIDAYS[month]);
+}
+eq('2026 全年工作日合计 248 天', EXPECTED_MONTH_WORKDAYS.reduce((a, b) => a + b, 0), 248);
+eq('2026 全年法定假日合计 33 天', EXPECTED_MONTH_HOLIDAYS.reduce((a, b) => a + b, 0), 33);
+
+const oct = monthSummary(cfg22m, 2026, 9);
+eq('10 月概览-工作日', oct.workdays, 18);
+eq('10 月概览-法定假日', oct.holidayDays, 7);
+eq('10 月概览-非工作日', oct.restDays, 13);
+eq('10 月概览-日工资', oct.dailyWage, 22000 / 18);
+eq('10 月概览-时工资', oct.hourlyWage, 22000 / 18 / 8);
+const feb = monthSummary(cfg22m, 2026, 1);
+eq('2 月概览-工作日 16', feb.workdays, 16);
+eq('2 月概览-法定假日 9', feb.holidayDays, 9);
+eq('2 月概览-日工资最高', feb.dailyWage, 22000 / 16);
+
+const year = yearSummary(cfg22m, 2026);
+eq('全年工作日 248 天', year.totalWorkdays, 248);
+eq('全年法定假日 33 天', year.totalHolidayDays, 33);
+eq('年收入 = 月薪 × 12', year.annualIncome, 264000);
+eq('平均日薪 = 年收入 / 全年工作日', year.averageDailyWage, 264000 / 248);
+eq('平均时薪 = 平均日薪 / 8h', year.averageHourlyWage, 264000 / 248 / 8);
+eq('平均月薪 = 实收月薪', year.averageMonthlyWage, 22000);
+eq('假日最多月份是 2 月', year.maxHolidayMonth.month, 2);
+eq('假日最多月份法定假日 9 天', year.maxHolidayMonth.holidayDays, 9);
+eq('12 个月明细齐全', year.months.length, 12);
+eq('假日最多月份随配置变化（去掉 2 月节日 → 10 月）', (() => {
+  const noFeb = cfgOf({ monthlySalary: 22000, holidays: cfg.holidays.filter((k) => !k.startsWith('2026-02-')) });
+  return yearSummary(noFeb, 2026).maxHolidayMonth.month;
+})(), 10);
+eq('无节假日配置时全年工作日 = 周一至周五 + 6 个调休上班日',
+  yearSummary(cfgOf({ holidays: [] }), 2026).totalWorkdays, 267);
+eq('无节假日配置时 10-01 也是工作日', workdaysInMonth(2026, 9, cfgOf({ holidays: [] })), 23);
 
 /* ---------------- 工资率 ---------------- */
 const cfg22 = cfgOf({ monthlySalary: 22000 });
