@@ -1,0 +1,102 @@
+{
+  "name": "dsh-niuma",
+  "version": "0.1.0",
+  "description": "牛马加速器 — DSH 工资换算实时计数器：按实收月薪、上下班时间、午休（可设是否算工时）、法定节假日自动折算秒/分/时/日/周/月工资，工资每秒滚动增长。Community salary ticker plugin for DeepSeek Harness.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek",
+    "salary",
+    "wage",
+    "income",
+    "counter",
+    "ticker",
+    "worktime",
+    "overtime",
+    "payday",
+    "牛马",
+    "工资",
+    "计数器",
+    "面板",
+    "panel"
+  ],
+  "homepage": "https://github.com/olimc2016/dsh-niuma#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olimc2016/dsh-niuma.git"
+  },
+  "bugs": {
+    "url": "https://github.com/olimc2016/dsh-niuma/issues"
+  },
+  "author": "oli20",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-renderer"
+      ]
+    }
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/schemastery": "^3.18.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "3.18.4",
+    "esbuild": "^0.28.2"
+  },
+  "scripts": {
+    "build": "node tools/build-client.mjs",
+    "watch": "node tools/build-client.mjs --watch",
+    "setup": "node tools/setup-modules.mjs",
+    "verify:core": "node tools/verify-core.mjs",
+    "verify:holidays": "node tools/verify-holidays.mjs",
+    "smoke:host": "node tools/smoke-host.mjs",
+    "smoke:client": "node tools/smoke-client.mjs",
+    "smoke:render": "node tools/smoke-render.mjs",
+    "test": "node tools/verify-core.mjs && node tools/verify-holidays.mjs && node tools/smoke-host.mjs && node tools/smoke-client.mjs && node tools/smoke-render.mjs",
+    "preview": "node tools/preview.mjs --open",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "license": "MIT"
+}

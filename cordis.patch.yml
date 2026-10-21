@@ -1,0 +1,15 @@
+# dsh-niuma bundle patch：把自己插进 DSH 的 profile 层栈。
+# 宿主半侧（Node）从这里被 Loader 加载；浏览器半侧由 package.json 的 dsh.client 声明。
+#
+# row id 必须唯一：内核 @deepseek-ai/dsh-base 已经占了 `niuma` 之外的常用 id，
+# 这里统一用 `niuma`，与包名去前缀一致。
+- insert:
+    - id: niuma
+      name: 'dsh-niuma'
+      config:
+        # 留空即用默认值（见 tools 里的 schema / README）。
+        # 想改默认值可以在这里写，例如：
+        # monthlySalary: 12000
+        # workStart: '09:30'
+        # lunchPaid: true
+        {}
