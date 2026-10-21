@@ -240,7 +240,7 @@ try {
 
   check(
     '配置路径：$DSH_HOME/niuma/config.json',
-    mod.resolveConfigPath({ DSH_HOME: '/tmp/fake-dsh-home' }) === '/tmp/fake-dsh-home/niuma/config.json',
+    mod.resolveConfigPath({ DSH_HOME: '/tmp/fake-dsh-home' }) === join('/tmp/fake-dsh-home', 'niuma', 'config.json'),
     mod.resolveConfigPath({ DSH_HOME: '/tmp/fake-dsh-home' }),
   );
   check(
