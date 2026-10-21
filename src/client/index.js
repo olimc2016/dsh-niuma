@@ -887,7 +887,7 @@ function SettingsSection(props) {
     color: C.label, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', outline: 'none',
   };
   const selectStyle = {
-    boxSizing: 'border-box', width: 40, minHeight: 28, padding: '4px 1px 4px 4px',
+    boxSizing: 'border-box', width: 48, minHeight: 28, padding: '4px 2px 4px 6px',
     borderRadius: 7, border: `1px solid ${C.border}`, background: C.layer2,
     color: C.label, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', outline: 'none', cursor: 'pointer',
   };
@@ -980,16 +980,6 @@ function SettingsSection(props) {
       key: 'actions',
       style: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 7, paddingTop: 7, borderTop: `1px solid ${C.border1}` },
     }, [
-      save.status === 'ok'
-        ? React.createElement('span', { key: 'ok', style: { fontSize: 11.5, color: C.ok } }, save.message || t('saved'))
-        : null,
-      save.status === 'error'
-        ? React.createElement('span', {
-          key: 'err',
-          style: { fontSize: 11.5, color: C.error, flex: '1 1 200px', whiteSpace: 'pre-wrap' },
-        }, `${t('saveFailed')}${save.errors.join('；')}`)
-        : null,
-      React.createElement('span', { key: 'spacer', style: { flex: '1 1 auto' } }),
       React.createElement('button', {
         key: 'save',
         type: 'button',
@@ -1012,6 +1002,15 @@ function SettingsSection(props) {
           textShadow: '0 1px 0 rgba(255,255,255,.28)',
         },
       }, save.status === 'saving' ? t('saving') : t('save')),
+      save.status === 'ok'
+        ? React.createElement('span', { key: 'ok', style: { fontSize: 11.5, color: C.ok } }, save.message || t('saved'))
+        : null,
+      save.status === 'error'
+        ? React.createElement('span', {
+          key: 'err',
+          style: { fontSize: 11.5, color: C.error, flex: '1 1 200px', whiteSpace: 'pre-wrap' },
+        }, `${t('saveFailed')}${save.errors.join('；')}`)
+        : null,
     ]),
   ]);
 }
