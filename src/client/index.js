@@ -155,6 +155,7 @@ const zh = {
   'saveFailed': '保存失败：',
   'dayUnit': '天',
   'hourUnit': '小时',
+  'minuteUnit': '分钟',
   'viewLabel': '查看',
   'viewCurrent': '本月',
   'viewYear': '全年平均',
@@ -248,6 +249,7 @@ const en = {
   'saveFailed': 'Save failed: ',
   'dayUnit': 'd',
   'hourUnit': 'h',
+  'minuteUnit': 'min',
   'viewLabel': 'View',
   'viewCurrent': 'This month',
   'viewYear': 'Year average',
@@ -889,21 +891,53 @@ function SettingsSection(props) {
     }),
   ]);
 
-  /** 时间字段：用原生 time 输入，点输入框/时钟图标即可用鼠标选择（同时也支持键盘输入 HH:mm）。 */
-  const timeField = (field, labelKey) => React.createElement('label', {
-    key: field,
-    style: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 130px', minWidth: 112 },
-  }, [
-    React.createElement('span', { key: 'l', style: labelStyle }, t(labelKey)),
-    React.createElement('input', {
-      key: 'i',
-      type: 'time',
-      step: 60,
-      value: form[field],
-      onChange: (event) => setField(field, event.target.value),
-      style: { ...inputStyle, minHeight: 32 },
-    }),
-  ]);
+  /**
+   * 时间字段：24 小时制的小时/分钟两个原生下拉（鼠标点选即可）。
+   * 不用 <input type="time"> 是因为它的展示格式跟随浏览器 locale（英语环境会变 12 小时制 AM/PM），
+   * 无法用属性强制 24 小时；下拉框则天然固定 00-23 / 00-59。
+   */
+  const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  const timeField = (field, labelKey) => {
+    const [rawHour = '00', rawMinute = '00'] = String(form[field] || '00:00').split(':');
+    const hour = HOUR_OPTIONS.includes(rawHour) ? rawHour : '00';
+    const minute = MINUTE_OPTIONS.includes(rawMinute) ? rawMinute : '00';
+    const commit = (nextHour, nextMinute) => setField(field, `${nextHour}:${nextMinute}`);
+    const selectStyle = {
+      ...inputStyle,
+      flex: '1 1 56px',
+      minWidth: 52,
+      padding: '5px 6px',
+      fontVariantNumeric: 'tabular-nums',
+      cursor: 'pointer',
+    };
+    return React.createElement('label', {
+      key: field,
+      style: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 150px', minWidth: 132 },
+    }, [
+      React.createElement('span', { key: 'l', style: labelStyle }, t(labelKey)),
+      React.createElement('div', {
+        key: 'row',
+        style: { display: 'flex', alignItems: 'center', gap: 4 },
+      }, [
+        React.createElement('select', {
+          key: 'h',
+          value: hour,
+          'aria-label': `${t(labelKey)} ${t('hourUnit')}`,
+          onChange: (event) => commit(event.target.value, minute),
+          style: selectStyle,
+        }, HOUR_OPTIONS.map((value) => React.createElement('option', { key: value, value }, value))),
+        React.createElement('span', { key: 'sep', style: { color: C.label3, fontWeight: 600 } }, ':'),
+        React.createElement('select', {
+          key: 'm',
+          value: minute,
+          'aria-label': `${t(labelKey)} ${t('minuteUnit')}`,
+          onChange: (event) => commit(hour, event.target.value),
+          style: selectStyle,
+        }, MINUTE_OPTIONS.map((value) => React.createElement('option', { key: value, value }, value))),
+      ]),
+    ]);
+  };
 
   const checkField = (field, labelKey) => React.createElement('label', {
     key: field,
