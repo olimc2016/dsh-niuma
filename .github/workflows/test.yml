@@ -1,0 +1,36 @@
+name: test
+
+# 跨平台自检：Linux + Windows 双跑，防止「只在作者那台机器上成立」的假设。
+# 额外验证：仓库里入库的 lib/client.js 必须能从 src/ 重新构建出来（产物与源码同源）。
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dev dependencies
+        run: npm install --registry=https://registry.npmjs.org/ --ignore-scripts --no-audit --no-fund
+
+      - name: Build client bundle
+        run: npm run build
+
+      - name: Built artifact must match committed source
+        run: git diff --exit-code -- lib/client.js lib/client.js.map
+
+      - name: Full test suite
+        run: npm test
