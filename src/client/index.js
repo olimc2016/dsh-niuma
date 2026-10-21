@@ -127,6 +127,7 @@ const zh = {
   'lunchPaidField': '午休算工时',
   'holidaysField': '节假日（一行一个 YYYY-MM-DD）',
   'extraWorkdaysField': '调休上班日（一行一个 YYYY-MM-DD）',
+  'itemsCount': '{n} 条',
   'save': '保存',
   'saving': '保存中…',
   'saved': '已保存',
@@ -203,6 +204,7 @@ const en = {
   'lunchPaidField': 'Lunch is paid',
   'holidaysField': 'Holidays (one YYYY-MM-DD per line)',
   'extraWorkdaysField': 'Make-up workdays (one YYYY-MM-DD per line)',
+  'itemsCount': '{n} items',
   'save': 'Save',
   'saving': 'Saving…',
   'saved': 'Saved',
@@ -552,27 +554,32 @@ function HeroCard(props) {
 function CountdownRow(props) {
   const t = props.t;
   const snap = props.snap;
-  const chip = (key, label, seconds) => React.createElement('div', {
+  const chip = (key, label, value, accent) => React.createElement('div', {
     key,
     style: {
-      flex: '1 1 140px', minWidth: 118,
+      flex: '1 1 150px', minWidth: 132,
       display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8,
       padding: '9px 12px', borderRadius: 12,
-      background: C.layer1, border: `1px solid ${C.border1}`,
+      background: accent ? `color-mix(in srgb, ${GOLD_TINT} 9%, ${C.layer1})` : C.layer1,
+      border: `1px solid ${accent ? `color-mix(in srgb, ${GOLD_TINT} 38%, ${C.border1})` : C.border1}`,
       boxSizing: 'border-box',
     },
   }, [
-    React.createElement('span', { key: 'l', style: { fontSize: 11, color: C.label3 } }, label),
+    React.createElement('span', {
+      key: 'l',
+      style: { fontSize: 11, color: accent ? C.label2 : C.label3, whiteSpace: 'nowrap' },
+    }, label),
     React.createElement('span', {
       key: 'v',
-      style: { fontSize: 14, fontWeight: 700, color: C.label, ...NUM },
-    }, Number(seconds) > 0 ? formatDuration(seconds) : '—'),
+      style: { fontSize: 13.5, fontWeight: 700, color: C.label, ...NUM },
+    }, value),
   ]);
   return React.createElement('div', {
     style: { display: 'flex', flexWrap: 'wrap', gap: 9 },
   }, [
-    chip('start', t('toStart'), snap.secondsToStart),
-    chip('end', t('toEnd'), snap.secondsToEnd),
+    chip('start', t('toStart'), Number(snap.secondsToStart) > 0 ? formatDuration(snap.secondsToStart) : '—'),
+    chip('end', t('toEnd'), Number(snap.secondsToEnd) > 0 ? formatDuration(snap.secondsToEnd) : '—'),
+    chip('month', t('monthEarned'), money(snap.monthEarned, 2), true),
   ]);
 }
 
@@ -761,25 +768,38 @@ function SettingsSection(props) {
     React.createElement('span', { key: 'l' }, t(labelKey)),
   ]);
 
-  const textareaField = (field, labelKey) => React.createElement('label', {
-    key: field,
-    style: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 220px', minWidth: 200 },
-  }, [
-    React.createElement('span', { key: 'l', style: labelStyle }, t(labelKey)),
-    React.createElement('textarea', {
-      key: 'i',
-      rows: 4,
-      value: form[field],
-      spellCheck: false,
-      onChange: (event) => setField(field, event.target.value),
-      style: {
-        ...inputStyle,
-        resize: 'vertical',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-        lineHeight: 1.5,
-      },
-    }),
-  ]);
+  const textareaField = (field, labelKey, rows = 5) => {
+    const list = splitDateLines(form[field]);
+    return React.createElement('label', {
+      key: field,
+      style: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 220px', minWidth: 200 },
+    }, [
+      React.createElement('span', {
+        key: 'l',
+        style: { ...labelStyle, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
+      }, [
+        React.createElement('span', { key: 'k' }, t(labelKey)),
+        React.createElement('span', {
+          key: 'n',
+          style: { fontSize: 10, color: C.label3, fontWeight: 400, ...NUM },
+        }, t('itemsCount').replace('{n}', String(list.length))),
+      ]),
+      React.createElement('textarea', {
+        key: 'i',
+        rows,
+        value: form[field],
+        spellCheck: false,
+        onChange: (event) => setField(field, event.target.value),
+        style: {
+          ...inputStyle,
+          resize: 'vertical',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+          lineHeight: 1.5,
+          fontSize: 12,
+        },
+      }),
+    ]);
+  };
 
   return React.createElement('details', {
     style: { background: C.layer1, border: `1px solid ${C.border1}`, borderRadius: 12, padding: '11px 13px' },
@@ -808,8 +828,8 @@ function SettingsSection(props) {
       key: 'lists',
       style: { display: 'flex', flexWrap: 'wrap', gap: 9, marginTop: 9 },
     }, [
-      textareaField('holidaysText', 'holidaysField'),
-      textareaField('extraWorkdaysText', 'extraWorkdaysField'),
+      textareaField('holidaysText', 'holidaysField', 8),
+      textareaField('extraWorkdaysText', 'extraWorkdaysField', 6),
     ]),
     React.createElement('div', {
       key: 'actions',

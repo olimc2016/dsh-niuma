@@ -223,7 +223,7 @@ if (screenshotPath) {
   if (!browser) throw new Error('找不到 Chromium/Edge，无法无头截图');
   const result = spawnSync(browser, [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
-    `--window-size=1160,${expand ? '1230' : '760'}`,
+    `--window-size=1160,${expand ? '1560' : '760'}`,
     '--virtual-time-budget=2500',
     `--screenshot=${screenshotPath}`, `file://${htmlPath}`,
   ], { stdio: 'inherit' });
