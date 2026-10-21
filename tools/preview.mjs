@@ -25,6 +25,7 @@ const args = process.argv.slice(2);
 const open = args.includes('--open');
 const screenshotIndex = args.indexOf('--screenshot');
 const screenshotPath = screenshotIndex >= 0 ? args[screenshotIndex + 1] : null;
+const expand = args.includes('--expand');
 
 const cacheDir = join(homedir(), '.dsh', 'tools', 'preview-cache', 'react-18.3.1');
 const CDN = {
@@ -103,7 +104,7 @@ function themeVars(record) {
     .join('\n      ');
 }
 
-function buildHtml(reactUmd, reactDomUmd, bundle) {
+function buildHtml(reactUmd, reactDomUmd, bundle, expand) {
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -151,6 +152,7 @@ function buildHtml(reactUmd, reactDomUmd, bundle) {
 <script>
   const React = window.React;
   const ReactDOM = window.ReactDOM;
+  const EXPAND = ${expand ? 'true' : 'false'};
   const ZH = (key) => key;
   function mount(rootId) {
     const root = ReactDOM.createRoot(document.getElementById(rootId));
@@ -176,6 +178,7 @@ function buildHtml(reactUmd, reactDomUmd, bundle) {
     const zh = locales['niuma'] && locales['niuma'].zh ? locales['niuma'].zh : {};
     const t = (key) => (zh[key] == null ? ZH(key) : zh[key]);
     root.render(React.createElement(main.component, { t, locale: 'zh' }));
+    if (EXPAND) setTimeout(() => { document.querySelectorAll('details').forEach((d) => { d.open = true; }); }, 60);
   }
   window.addEventListener('error', (event) => {
     const pre = document.createElement('pre');
@@ -195,7 +198,7 @@ const bundle = readFileSync(join(repo, 'lib', 'client.js'), 'utf8');
 const outDir = join(tmpdir(), `dsh-niuma-preview-${process.pid}`);
 mkdirSync(outDir, { recursive: true });
 const htmlPath = join(outDir, 'index.html');
-writeFileSync(htmlPath, buildHtml(react.react, react.reactDom, bundle));
+writeFileSync(htmlPath, buildHtml(react.react, react.reactDom, bundle, expand));
 console.log(`preview: file://${htmlPath}`);
 
 if (screenshotPath) {
@@ -208,7 +211,8 @@ if (screenshotPath) {
   if (!browser) throw new Error('找不到 Chromium/Edge，无法无头截图');
   const result = spawnSync(browser, [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
-    '--virtual-time-budget=2500', '--window-size=1160,760',
+    `--window-size=1160,${expand ? '1230' : '760'}`,
+    '--virtual-time-budget=2500',
     `--screenshot=${screenshotPath}`, `file://${htmlPath}`,
   ], { stdio: 'inherit' });
   if (result.status !== 0) throw new Error(`无头截图失败，退出码 ${result.status}`);
