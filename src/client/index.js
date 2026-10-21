@@ -906,6 +906,8 @@ function SettingsSection(props) {
   ]);
 
   return React.createElement('details', {
+    // 默认展开：改工资/作息是高频操作，不用每次多点一下；用户手动收起后仍保持收起
+    open: true,
     style: { background: C.layer1, border: `1px solid ${C.border1}`, borderRadius: 12, padding: '11px 13px' },
   }, [
     React.createElement('summary', {
