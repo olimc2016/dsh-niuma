@@ -16,6 +16,7 @@
     "lib",
     "src",
     "cordis.patch.yml",
+    "docs/*.png",
     "README.md",
     "README.en.md",
     "CHANGELOG.md",

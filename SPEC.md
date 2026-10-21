@@ -144,7 +144,7 @@ export async function apply(ctx, config = {}) { ... }
   - `POST /niuma/settings`（JSON body = 部分配置）→ 校验通过 `{ ok: true, data: { config } }`；非法 `{ ok: false, error }` 400；body 上限 64KB
   - `GET /niuma/health` → `{ ok: true, data: { name, version, aliveAt } }`（version 读自身 package.json）
   - 只允许声明的 method，其它返回 405 + allow 头
-- 参考实现：`/Users/shouchocho/Documents/deepseek-harness/default-workspace/dsh-token-meter-panel/lib/index.js`（设置注册 ~440 行、路由 ~960 行、守卫 + sendJson/queryOf 工具在其上下方）。
+- 参考实现：同作者的 `dsh-token-meter-panel` 仓库 `lib/index.js`（settings 注册、路由守卫、sendJson/queryOf 工具）。
 - `cordis.patch.yml` 行 id 固定 `niuma`，name `dsh-niuma`，config 留 `{}`。
 
 ## 6. 浏览器半侧 `src/client/index.js`
