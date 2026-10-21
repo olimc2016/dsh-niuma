@@ -870,127 +870,81 @@ function SettingsSection(props) {
   const save = props.save;
   const onSave = props.onSave;
 
-  const inputStyle = {
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '5px 9px',
-    borderRadius: 8,
-    border: `1px solid ${C.border}`,
-    background: C.layer2,
-    color: C.label,
-    fontSize: 13,
-    fontVariantNumeric: 'tabular-nums',
-    outline: 'none',
-    minHeight: 30,
+  // E 方案：行式短控件 —— 标签固定左列，控件都按内容定宽（不拉满）
+  const rowStyle = {
+    display: 'flex', alignItems: 'center', gap: 10,
+    minHeight: 33, padding: '2px 0', borderTop: `1px solid ${C.border1}`,
   };
-  const labelStyle = { fontSize: 10.5, color: C.label3, fontWeight: 500, marginBottom: 1 };
-  const groupStyle = { display: 'grid', gap: 6 };
-  const groupTitleStyle = { fontSize: 10.5, fontWeight: 700, color: C.label3, letterSpacing: '.4px', textTransform: 'uppercase' };
-  const pairStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 };
-
-  /** 实收月薪：输入框右侧常驻单位「元 / 月」。 */
-  const salaryField = () => React.createElement('label', {
-    key: 'monthlySalary',
-    style: { display: 'grid', gap: 4, maxWidth: 320 },
-  }, [
-    React.createElement('span', { key: 'l', style: labelStyle }, t('salaryField')),
-    React.createElement('div', { key: 'w', style: { position: 'relative' } }, [
-      React.createElement('input', {
-        key: 'i',
-        type: 'text',
-        inputMode: 'decimal',
-        value: form.monthlySalary,
-        placeholder: '10000',
-        onChange: (event) => setField('monthlySalary', event.target.value),
-        style: { ...inputStyle, paddingRight: 66 },
-      }),
-      React.createElement('span', {
-        key: 'u',
-        style: {
-          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-          fontSize: 10.5, color: C.label3, pointerEvents: 'none',
-        },
-      }, t('salaryUnit')),
-    ]),
-  ]);
-
+  const rowKeyStyle = { width: 62, flex: '0 0 62px', fontSize: 11.5, color: C.label3 };
+  const rowValStyle = { display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', minWidth: 0 };
+  const inputStyle = {
+    boxSizing: 'border-box', width: 88, minHeight: 28, padding: '4px 8px',
+    borderRadius: 7, border: `1px solid ${C.border}`, background: C.layer2,
+    color: C.label, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', outline: 'none',
+  };
+  const selectStyle = {
+    boxSizing: 'border-box', width: 42, minHeight: 28, padding: '4px 1px 4px 4px',
+    borderRadius: 7, border: `1px solid ${C.border}`, background: C.layer2,
+    color: C.label, fontSize: 12.5, fontVariantNumeric: 'tabular-nums', outline: 'none', cursor: 'pointer',
+  };
+  const unitStyle = { fontSize: 10.5, color: C.label3, whiteSpace: 'nowrap' };
+  const dashStyle = { fontSize: 11, color: C.label3, margin: '0 1px' };
   const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
   const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
-  /** 24 小时制时间字段：小时/分钟两个下拉（固定 00-23 / 00-59，不受浏览器 locale 影响）。 */
-  const timeField = (field, labelKey, disabled = false) => {
+  const row = (key, label, values) => React.createElement('div', { key, style: rowStyle }, [
+    React.createElement('span', { key: 'k', style: rowKeyStyle }, label),
+    React.createElement('div', { key: 'v', style: rowValStyle }, values),
+  ]);
+
+  /** 24 小时制时间：小时/分钟两个下拉，各 46px（不受浏览器 locale 影响）。 */
+  const timeSelects = (field, label, disabled = false) => {
     const [rawHour = '00', rawMinute = '00'] = String(form[field] || '00:00').split(':');
     const hour = HOUR_OPTIONS.includes(rawHour) ? rawHour : '00';
     const minute = MINUTE_OPTIONS.includes(rawMinute) ? rawMinute : '00';
     const commit = (nextHour, nextMinute) => setField(field, `${nextHour}:${nextMinute}`);
-    const selectStyle = {
-      ...inputStyle,
-      padding: '4px 6px',
-      minHeight: 30,
-      cursor: disabled ? 'default' : 'pointer',
-      opacity: disabled ? 0.45 : 1,
-    };
-    return React.createElement('label', {
-      key: field,
-      style: { display: 'grid', gap: 4, opacity: disabled ? 0.75 : 1 },
-    }, [
-      React.createElement('span', { key: 'l', style: labelStyle }, t(labelKey)),
-      React.createElement('div', { key: 'row', style: { display: 'flex', alignItems: 'center', gap: 4, maxWidth: 158 } }, [
-        React.createElement('select', {
-          key: 'h',
-          value: hour,
-          disabled,
-          'aria-label': `${t(labelKey)} ${t('hourUnit')}`,
-          onChange: (event) => commit(event.target.value, minute),
-          style: selectStyle,
-        }, HOUR_OPTIONS.map((value) => React.createElement('option', { key: value, value }, value))),
-        React.createElement('span', { key: 'sep', style: { color: C.label3, fontWeight: 700 } }, ':'),
-        React.createElement('select', {
-          key: 'm',
-          value: minute,
-          disabled,
-          'aria-label': `${t(labelKey)} ${t('minuteUnit')}`,
-          onChange: (event) => commit(hour, event.target.value),
-          style: selectStyle,
-        }, MINUTE_OPTIONS.map((value) => React.createElement('option', { key: value, value }, value))),
-      ]),
+    const style = { ...selectStyle, opacity: disabled ? 0.45 : 1, cursor: disabled ? 'default' : 'pointer' };
+    return React.createElement('span', { key: field, style: { display: 'inline-flex', alignItems: 'center', gap: 2 } }, [
+      React.createElement('select', {
+        key: 'h', value: hour, disabled, 'aria-label': `${label} ${t('hourUnit')}`,
+        onChange: (event) => commit(event.target.value, minute), style,
+      }, HOUR_OPTIONS.map((value) => React.createElement('option', { key: value, value }, value))),
+      React.createElement('span', { key: 'c', style: { color: C.label3, fontWeight: 700, fontSize: 12 } }, ':'),
+      React.createElement('select', {
+        key: 'm', value: minute, disabled, 'aria-label': `${label} ${t('minuteUnit')}`,
+        onChange: (event) => commit(hour, event.target.value), style,
+      }, MINUTE_OPTIONS.map((value) => React.createElement('option', { key: value, value }, value))),
     ]);
   };
 
-  /** 开关式勾选：一行一个，语气与字段区分开。 */
-  const toggleField = (field, labelKey, disabled = false) => React.createElement('label', {
+  const timeRange = (startField, endField, label, disabled) => React.createElement('span', {
+    key: `${startField}-${endField}`,
+    style: { display: 'inline-flex', alignItems: 'center', gap: 2 },
+  }, [
+    timeSelects(startField, label, disabled),
+    React.createElement('span', { key: 'dash', style: dashStyle }, '–'),
+    timeSelects(endField, label, disabled),
+  ]);
+
+  const toggle = (field, labelKey, disabled) => React.createElement('label', {
     key: field,
     style: {
-      display: 'inline-flex', alignItems: 'center', gap: 7,
-      padding: '4px 9px', borderRadius: 9,
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '2px 6px', borderRadius: 8,
       border: `1px solid ${C.border1}`, background: C.layer2,
-      fontSize: 12, color: disabled ? C.label3 : C.label2,
-      cursor: disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
-      opacity: disabled ? 0.55 : 1,
+      fontSize: 11, color: disabled ? C.label3 : C.label2, whiteSpace: 'nowrap',
+      cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.55 : 1,
     },
   }, [
     React.createElement('input', {
-      key: 'i',
-      type: 'checkbox',
-      checked: Boolean(form[field]),
-      disabled,
+      key: 'i', type: 'checkbox', checked: Boolean(form[field]), disabled,
       onChange: (event) => setCheck(field, event.target.checked),
-      style: { accentColor: GOLD_TINT, width: 14, height: 14, cursor: 'inherit' },
+      style: { accentColor: GOLD_TINT, width: 13, height: 13, margin: 0, cursor: 'inherit' },
     }),
     React.createElement('span', { key: 'l' }, t(labelKey)),
   ]);
 
   const lunchDisabled = !form.lunchEnabled;
-  const group = (key, title, children, divided) => React.createElement('div', {
-    key,
-    style: {
-      ...groupStyle,
-      ...(divided ? { paddingTop: 8, borderTop: `1px solid ${C.border1}` } : {}),
-    },
-  }, [
-    React.createElement('div', { key: 'title', style: groupTitleStyle }, title),
-    ...children,
-  ]);
 
   return React.createElement('details', {
     open: true,
@@ -1000,64 +954,57 @@ function SettingsSection(props) {
       key: 'sum',
       style: { cursor: 'pointer', fontSize: 12.5, fontWeight: 650, color: C.label, userSelect: 'none' },
     }, t('settings')),
-    React.createElement('div', { key: 'body', style: { display: 'grid', gap: 9, marginTop: 8 } }, [
-      group('salary', t('groupSalary'), [salaryField()], false),
-      group('worktime', t('groupWorkTime'), [
-        React.createElement('div', { key: 'pair', style: pairStyle }, [
-          timeField('workStart', 'workStartField'),
-          timeField('workEnd', 'workEndField'),
-        ]),
-      ], true),
-      group('lunch', t('groupLunch'), [
-        React.createElement('div', { key: 'toggles', style: { display: 'flex', flexWrap: 'wrap', gap: 8 } }, [
-          toggleField('lunchEnabled', 'lunchEnabledField'),
-          toggleField('lunchPaid', 'lunchPaidField', lunchDisabled),
-        ]),
-        React.createElement('div', { key: 'pair', style: pairStyle }, [
-          timeField('lunchStart', 'lunchStartField', lunchDisabled),
-          timeField('lunchEnd', 'lunchEndField', lunchDisabled),
-        ]),
-      ], true),
+    React.createElement('div', { key: 'body', style: { marginTop: 7 } }, [
+      row('salary', t('salaryField'), [
+        React.createElement('input', {
+          key: 'i', type: 'text', inputMode: 'decimal', value: form.monthlySalary, placeholder: '10000',
+          onChange: (event) => setField('monthlySalary', event.target.value), style: inputStyle,
+        }),
+        React.createElement('span', { key: 'u', style: unitStyle }, t('salaryUnit')),
+      ]),
+      row('worktime', t('groupWorkTime'), [
+        timeRange('workStart', 'workEnd', t('groupWorkTime'), false),
+      ]),
+      row('lunch', t('groupLunch'), [
+        // 两个开关放一起；窄面板换行时是「开关一行、时间一行」，不会出现单个控件孤零零掉到下一行
+        toggle('lunchEnabled', 'lunchEnabledField', false),
+        toggle('lunchPaid', 'lunchPaidField', lunchDisabled),
+        timeRange('lunchStart', 'lunchEnd', t('groupLunch'), lunchDisabled),
+      ]),
     ]),
     React.createElement('div', {
       key: 'actions',
-      style: {
-        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        marginTop: 9, paddingTop: 8, borderTop: `1px solid ${C.border1}`,
-      },
+      style: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 7, paddingTop: 7, borderTop: `1px solid ${C.border1}` },
     }, [
       save.status === 'ok'
-        ? React.createElement('span', { key: 'ok', style: { fontSize: 12, color: C.ok } }, save.message || t('saved'))
+        ? React.createElement('span', { key: 'ok', style: { fontSize: 11.5, color: C.ok } }, save.message || t('saved'))
         : null,
       save.status === 'error'
         ? React.createElement('span', {
           key: 'err',
-          style: { fontSize: 12, color: C.error, flex: '1 1 220px', whiteSpace: 'pre-wrap' },
+          style: { fontSize: 11.5, color: C.error, flex: '1 1 200px', whiteSpace: 'pre-wrap' },
         }, `${t('saveFailed')}${save.errors.join('；')}`)
         : null,
-      save.status === 'idle' || save.status === 'saving'
-        ? React.createElement('span', { key: 'spacer', style: { flex: '1 1 auto' } })
-        : null,
+      React.createElement('span', { key: 'spacer', style: { flex: '1 1 auto' } }),
       React.createElement('button', {
         key: 'save',
         type: 'button',
         onClick: onSave,
         disabled: save.status === 'saving',
         style: {
-          marginLeft: 'auto',
           border: `1px solid color-mix(in srgb, ${GOLD_TINT} 72%, rgba(0,0,0,.18))`,
           color: '#3A2A05',
           background: save.status === 'saving'
             ? `color-mix(in srgb, ${GOLD_TINT} 52%, #fff)`
             : 'linear-gradient(180deg, #F8DC86 0%, #EFC258 52%, #D99D2C 100%)',
-          borderRadius: 9,
-          padding: '6px 18px',
-          fontSize: 13,
+          borderRadius: 8,
+          padding: '5px 16px',
+          fontSize: 12.5,
           fontWeight: 700,
           letterSpacing: '.3px',
           cursor: save.status === 'saving' ? 'default' : 'pointer',
           opacity: save.status === 'saving' ? 0.72 : 1,
-          boxShadow: `0 2px 10px color-mix(in srgb, ${GOLD_TINT} 36%, transparent), inset 0 1px 0 rgba(255,255,255,.45)`,
+          boxShadow: `0 2px 9px color-mix(in srgb, ${GOLD_TINT} 34%, transparent), inset 0 1px 0 rgba(255,255,255,.45)`,
           textShadow: '0 1px 0 rgba(255,255,255,.28)',
         },
       }, save.status === 'saving' ? t('saving') : t('save')),
