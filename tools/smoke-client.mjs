@@ -171,8 +171,14 @@ try {
   const t = (key) => (locale?.dict.zh?.[key] != null ? locale.dict.zh[key] : key);
   const tree = main.component({ t });
   const childCount = tree && Array.isArray(tree.children) ? tree.children.length : 0;
+  // 根容器现在是「滚动壳(StyleTag+inner)」：真正的面板内容在 inner 里（>= 6 个子区块）
+  const inner = Array.isArray(tree?.children)
+    ? tree.children.find((node) => node && node.props && node.props.key === 'inner')
+    : null;
+  const innerCount = inner && Array.isArray(inner.children) ? inner.children.length : 0;
   check("面板首帧渲染出 div 根节点", Boolean(tree && tree.type === 'div'), tree && tree.type);
-  check('面板首帧子节点数 >= 6', childCount >= 6, childCount);
+  check('根壳含 style + inner 两个子节点', childCount === 2, childCount);
+  check('面板 inner 子节点数 >= 6', innerCount >= 6, innerCount);
 
   // 抓一次文本，确认首帧不是空白
   const texts = [];

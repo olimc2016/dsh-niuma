@@ -9,7 +9,7 @@ import {
   normalizeConfig,
   yearSummary,
 } from '../core.mjs';
-import { HOLIDAY_SOURCE } from '../holidays.mjs';
+import { HOLIDAY_BLOCKS, HOLIDAY_SOURCE } from '../holidays.mjs';
 
 /**
  * dsh-niuma 浏览器半侧：DSH 侧栏「牛马」入口 + 中栏工资实时计数器面板。
@@ -128,6 +128,17 @@ const zh = {
   'holidaysField': '节假日（一行一个 YYYY-MM-DD）',
   'extraWorkdaysField': '调休上班日（一行一个 YYYY-MM-DD）',
   'itemsCount': '{n} 条',
+  'holidaysCardTitle': '2026 年节假日安排',
+  'holidaysCardSub': '法定假日 {days} 天 · 调休上班 {extra} 天',
+  'holidaysDaysShort': '{days} 天',
+  'holidaysExtraNote': '调休上班日 {extra} 天（周末补班，按工作日计）',
+  'holidayNewYear': '元旦',
+  'holidaySpring': '春节',
+  'holidayQingming': '清明',
+  'holidayLabour': '劳动节',
+  'holidayDragon': '端午',
+  'holidayMidAutumn': '中秋',
+  'holidayNational': '国庆',
   'save': '保存',
   'saving': '保存中…',
   'saved': '已保存',
@@ -205,6 +216,17 @@ const en = {
   'holidaysField': 'Holidays (one YYYY-MM-DD per line)',
   'extraWorkdaysField': 'Make-up workdays (one YYYY-MM-DD per line)',
   'itemsCount': '{n} items',
+  'holidaysCardTitle': '2026 holidays',
+  'holidaysCardSub': '{days} statutory days · {extra} make-up workdays',
+  'holidaysDaysShort': '{days} d',
+  'holidaysExtraNote': '{extra} make-up workdays (weekend shifts, counted as workdays)',
+  'holidayNewYear': "New Year's Day",
+  'holidaySpring': 'Spring Festival',
+  'holidayQingming': 'Qingming',
+  'holidayLabour': 'Labour Day',
+  'holidayDragon': 'Dragon Boat',
+  'holidayMidAutumn': 'Mid-Autumn',
+  'holidayNational': 'National Day',
   'save': 'Save',
   'saving': 'Saving…',
   'saved': 'Saved',
@@ -243,7 +265,7 @@ const fallbackTranslate = (key) => (zh[key] != null ? zh[key] : key);
 /* ------------------------------------------------------------------ *
  * 格式化小工具
  * ------------------------------------------------------------------ */
-const money = (value, digits = 2) => `¥${formatMoney(value, digits)}`;
+const money = (value, digits = 2) => `${formatMoney(value, digits)} 元`;
 
 /** 8.00 -> '8'，8.50 -> '8.5'（工时展示用） */
 function trimNumber(value, digits = 2) {
@@ -489,10 +511,6 @@ function HeroCard(props) {
       style: { display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' },
     }, [
       React.createElement('span', {
-        key: 'cur',
-        style: { fontSize: 24, fontWeight: 650, color: C.label2, ...NUM },
-      }, '¥'),
-      React.createElement('span', {
         key: 'val',
         style: {
           fontSize: 46, lineHeight: 1.12, fontWeight: 800, letterSpacing: '-1.2px',
@@ -501,6 +519,10 @@ function HeroCard(props) {
           ...(rest ? { opacity: 0.62 } : {}),
         },
       }, formatMoney(snap.todayEarned, 4)),
+      React.createElement('span', {
+        key: 'unit',
+        style: { fontSize: 18, fontWeight: 700, color: C.label2, ...NUM },
+      }, '元'),
     ]),
     React.createElement('div', {
       key: 'chips',
@@ -557,7 +579,7 @@ function CountdownRow(props) {
   const chip = (key, label, value, accent) => React.createElement('div', {
     key,
     style: {
-      flex: '1 1 150px', minWidth: 132,
+      flex: '1 1 120px', minWidth: 116,
       display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8,
       padding: '9px 12px', borderRadius: 12,
       background: accent ? `color-mix(in srgb, ${GOLD_TINT} 9%, ${C.layer1})` : C.layer1,
@@ -708,6 +730,87 @@ function DetailsFooter(props) {
         style: { color: C.brand, textDecoration: 'none', fontWeight: 600 },
       }, `${source.year} · ${t('holidaySourceLink')} ↗`),
       React.createElement('span', { key: 'n', style: { color: C.label3 } }, `（${source.title}）`),
+    ]),
+  ]);
+}
+
+/** 节假日卡片：2026 年七个法定假日区段 + 调休上班日统计（数据来自 holidays.mjs）。 */
+const HOLIDAY_LABEL_KEYS = {
+  newYear: 'holidayNewYear',
+  spring: 'holidaySpring',
+  qingming: 'holidayQingming',
+  labour: 'holidayLabour',
+  dragon: 'holidayDragon',
+  midAutumn: 'holidayMidAutumn',
+  national: 'holidayNational',
+};
+
+function HolidaysCard(props) {
+  const t = props.t;
+  const source = props.holidaySource || HOLIDAY_SOURCE;
+  const extra = Array.isArray(props.extraWorkdays) ? props.extraWorkdays : [];
+  const totalDays = HOLIDAY_BLOCKS.reduce((sum, block) => sum + block.days, 0);
+  const shortDate = (key) => key.slice(5).replace('-', '/');
+  return React.createElement('div', {
+    style: {
+      background: C.layer1,
+      border: `1px solid ${C.border1}`,
+      borderRadius: 12,
+      padding: '10px 12px',
+    },
+  }, [
+    React.createElement('div', {
+      key: 'head',
+      style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' },
+    }, [
+      React.createElement('span', { key: 't', style: { fontSize: 12.5, fontWeight: 700, color: C.label2, letterSpacing: '.2px' } },
+        t('holidaysCardTitle')),
+      React.createElement('span', { key: 's', style: { fontSize: 10.5, color: C.label3, ...NUM } },
+        t('holidaysCardSub').replace('{days}', String(totalDays)).replace('{extra}', String(extra.length))),
+    ]),
+    React.createElement('div', {
+      key: 'grid',
+      style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 7, marginTop: 8 },
+    }, HOLIDAY_BLOCKS.map((block) => React.createElement('div', {
+      key: block.id,
+      style: {
+        border: `1px solid ${C.border1}`,
+        borderRadius: 9,
+        padding: '6px 8px',
+        background: `color-mix(in srgb, ${GOLD_TINT} 6%, transparent)`,
+      },
+    }, [
+      React.createElement('div', {
+        key: 'row',
+        style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 },
+      }, [
+        React.createElement('span', { key: 'n', style: { fontSize: 11.5, fontWeight: 650, color: C.label } },
+          t(HOLIDAY_LABEL_KEYS[block.id])),
+        React.createElement('span', {
+          key: 'd',
+          style: {
+            fontSize: 10, fontWeight: 700, color: C.label2,
+            background: `color-mix(in srgb, ${GOLD_TINT} 16%, transparent)`,
+            borderRadius: 999, padding: '0 6px', ...NUM,
+          },
+        }, t('holidaysDaysShort').replace('{days}', String(block.days))),
+      ]),
+      React.createElement('div', { key: 'r', style: { fontSize: 10, color: C.label3, marginTop: 2, ...NUM } },
+        `${shortDate(block.from)} – ${shortDate(block.to)}`),
+    ]))),
+    React.createElement('div', {
+      key: 'foot',
+      style: { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, marginTop: 8, fontSize: 10.5, color: C.label3 },
+    }, [
+      React.createElement('span', { key: 'x' }, t('holidaysExtraNote').replace('{extra}', String(extra.length))),
+      React.createElement('a', {
+        key: 'a',
+        href: source.url,
+        target: '_blank',
+        rel: 'noreferrer',
+        title: source.title,
+        style: { color: C.brand, textDecoration: 'none', fontWeight: 600, marginLeft: 'auto' },
+      }, `${source.year} ${t('holidaySourceLink')} ↗`),
     ]),
   ]);
 }
@@ -1012,22 +1115,16 @@ function NiumaPanel(props) {
 
   return React.createElement('div', {
     style: {
-      // DSH 的 main slot 给的是定高容器：插件必须自己当滚动容器，否则展开设置后底部会被裁掉
-      //（与 dsh-token-meter-panel / dsh-worktodo 的根容器同一套写法：height:100% + overflow:auto）。
+      // DSH 的 main slot 给的是定高容器：插件必须自己当滚动容器，否则展开设置后底部会被裁掉。
+      // 注意：这里用 block + 内层 flex 的写法 —— 如果根直接 display:flex，子项会在定高容器里
+      // 被 flex-shrink 压扁（展开设置时整张主卡高度被压缩、内容被 overflow 裁掉）。
       height: '100%',
       width: '100%',
-      maxWidth: 820,
-      margin: '0 auto',
       overflowY: 'auto',
       overflowX: 'hidden',
       overscrollBehavior: 'contain',
       scrollbarGutter: 'stable',
       boxSizing: 'border-box',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 11,
-      minWidth: 0,
-      padding: '16px 18px 40px',
       fontSize: 13,
       lineHeight: 1.45,
       color: C.label,
@@ -1035,6 +1132,20 @@ function NiumaPanel(props) {
     },
   }, [
     React.createElement(StyleTag, { key: 'css' }),
+    React.createElement('div', {
+      key: 'inner',
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 11,
+        width: '100%',
+        maxWidth: 820,
+        margin: '0 auto',
+        padding: '16px 18px 40px',
+        boxSizing: 'border-box',
+        minWidth: 0,
+      },
+    }, [
     // 品牌头：图标块 + 标题/副标题 + 状态徽标
     React.createElement('div', {
       key: 'head',
@@ -1135,6 +1246,12 @@ function NiumaPanel(props) {
       : null,
     React.createElement(SectionTitle, { key: 'detailTitle', title: t('sectionDetail') }),
     React.createElement(DetailsFooter, { key: 'footer', t, snap, holidaySource }),
+    React.createElement(HolidaysCard, {
+      key: 'holidays',
+      t,
+      holidaySource,
+      extraWorkdays: cfg.extraWorkdays,
+    }),
     React.createElement(SettingsSection, {
       key: 'settings',
       t,
@@ -1144,6 +1261,7 @@ function NiumaPanel(props) {
       save,
       onSave,
     }),
+    ]),
   ]);
 }
 

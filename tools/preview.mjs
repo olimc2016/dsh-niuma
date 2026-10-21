@@ -129,11 +129,11 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView, dshViewpo
 <div class="stage">
   <div class="pane" id="pane-light" style="color-scheme: light; ${themeVars(LIGHT)}">
     <div class="pane-title" style="color:#5a6472">LIGHT THEME</div>
-    <div class="viewport" id="viewport-light"><div id="root-light" style="height:100%"></div></div>
+    <div class="${dshViewport ? 'viewport' : ''}" id="viewport-light"><div id="root-light" style="height:100%"></div></div>
   </div>
   <div class="pane" id="pane-dark" style="color-scheme: dark; ${themeVars(DARK)}">
     <div class="pane-title" style="color:#8a94a6">DARK THEME</div>
-    <div class="viewport" id="viewport-dark"><div id="root-dark" style="height:100%"></div></div>
+    <div class="${dshViewport ? 'viewport' : ''}" id="viewport-dark"><div id="root-dark" style="height:100%"></div></div>
   </div>
 </div>
 <script>
@@ -238,7 +238,7 @@ if (screenshotPath) {
   if (!browser) throw new Error('找不到 Chromium/Edge，无法无头截图');
   const result = spawnSync(browser, [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=2',
-    `--window-size=1160,${expand ? '1560' : '760'}`,
+    `--window-size=1160,${expand ? '1950' : '760'}`,
     '--virtual-time-budget=2500',
     `--screenshot=${screenshotPath}`, `file://${htmlPath}`,
   ], { stdio: 'inherit' });

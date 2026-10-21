@@ -2,19 +2,26 @@
  * 宿主半侧烟测（tools/smoke-host.mjs）。
  *
  * 不启动 DSH、不监听端口、不发出任何真实网络请求：
- *   - 用假 ctx（webServer 收集路由、effect 桩、logger 桩、connection 桩、settings 桩）调用 apply()
+ *   - 用假 ctx（webServer 收集路由、effect 桩、logger 桩、connection 桩）调用 apply()
  *   - 构造 mock request/response，**真实调用**三条路由的 handler
- *   - 断言状态码、响应 JSON、405 + allow 头、鉴权守卫、settings 持久化、降级与异常韧性
+ *   - 断言状态码、响应 JSON、405 + allow 头、鉴权守卫、**JSON 文件持久化**、降级与异常韧性
  *
  * 运行：node tools/smoke-host.mjs（退出码 0 = 全绿）
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { DEFAULTS } from '../src/core.mjs';
 import { HOLIDAY_SOURCE } from '../src/holidays.mjs';
 
 const TARGET = new URL('../lib/index.js', import.meta.url).href;
 const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+
+/** 测试用临时 DSH_HOME / 配置文件路径：绝不碰真实 ~/.dsh */
+const TEST_HOME = mkdtempSync(join(tmpdir(), 'niuma-smoke-'));
+const TEST_CONFIG_PATH = join(TEST_HOME, 'niuma', 'config.json');
+process.env.NIUMA_CONFIG_PATH = TEST_CONFIG_PATH;
 
 /* ------------------------------------------------------------------ *
  * 断言框架
@@ -45,50 +52,11 @@ function section(title) {
 
 const EMPTY_SCOPE = Object.freeze({});
 
-/**
- * 造一个独立的假 ctx（每个场景一份，互不污染）。
- * @param {object} [opts]
- * @param {object} [opts.connection] connection 桩（默认 requestRejection 放行）
- * @param {boolean} [opts.withSettings] 是否提供 settings 服务（false 模拟服务缺席）
- * @param {boolean} [opts.brokenWebServer] webServer.register 抛错，用于验证 apply 不抛
- */
+/** 造一个独立的假 ctx（每个场景一份，互不污染）。 */
 function newCtx(opts = {}) {
   const routes = [];
   const effects = [];
   const logs = [];
-  const settingsStore = {
-    registrations: [],
-    updates: [],
-    watchers: [],
-    stored: { ...(opts.stored ?? EMPTY_SCOPE) },
-  };
-
-  const fakeSettings = {
-    register(ns, schema, options) {
-      const registration = { ns, schema, options };
-      settingsStore.registrations.push(registration);
-      return {
-        get() {
-          return { ...settingsStore.stored };
-        },
-        watch(callback) {
-          settingsStore.watchers.push(callback);
-          return () => {
-            const index = settingsStore.watchers.indexOf(callback);
-            if (index >= 0) settingsStore.watchers.splice(index, 1);
-          };
-        },
-        async update(patch) {
-          settingsStore.updates.push(patch);
-          settingsStore.stored = { ...settingsStore.stored, ...patch };
-        },
-        async replace(next) {
-          settingsStore.updates.push(next);
-          settingsStore.stored = { ...next };
-        },
-      };
-    },
-  };
 
   const logger = (() => {
     const sink = {
@@ -117,26 +85,17 @@ function newCtx(opts = {}) {
         };
       },
     },
-    settings: opts.withSettings === false ? undefined : fakeSettings,
     connection: opts.connection ?? { requestRejection: () => undefined },
     logger,
     effect: trackEffect,
     get(serviceName) {
       if (serviceName === 'connection') return ctx.connection;
-      if (serviceName === 'settings') return ctx.settings;
       return ctx[serviceName];
     },
-    inject(names, callback) {
-      // 模拟 Cordis 的可选服务：服务缺席时回调永不执行
-      if (opts.withSettings === false) return { dispose() {} };
-      const scoped = Object.create(ctx);
-      scoped.effect = trackEffect;
-      callback(scoped);
-      return { dispose() {} };
-    },
+    inject() { return { dispose() {} }; },
   };
 
-  return { ctx, routes, effects, logs, settingsStore };
+  return { ctx, routes, effects, logs };
 }
 
 /** 模拟 Node 的 IncomingMessage：handler 注册 data/end 后，在下一个 microtask 里灌数据。 */
@@ -256,15 +215,6 @@ try {
   check('inject === ["webServer"]', deepEqual(mod.inject, ['webServer']), `实际 ${JSON.stringify(mod.inject)}`);
   check('apply 是函数', typeof mod.apply === 'function');
 
-  const schemasteryAvailable = await (async () => {
-    try {
-      await import('@deepseek-ai/schemastery');
-      return true;
-    } catch {
-      return false;
-    }
-  })();
-  console.log(`  info schemastery ${schemasteryAvailable ? '可用' : '不可用（将验证降级路径）'}`);
 
   /* ---------------- 1. 路由注册 ---------------- */
   section('1. 路由注册与 ctx.effect 卸载');
@@ -288,19 +238,20 @@ try {
   );
   check('apply 写了 info 日志（logger 桩生效）', main.logs.some(([level, message]) => level === 'info' && message.includes('routes mounted')));
 
-  if (schemasteryAvailable) {
-    const registered = await waitFor(() => main.settingsStore.registrations.length > 0, 1500);
-    check('settings namespace 已注册', registered, `实际 ${main.settingsStore.registrations.length}`);
-    const registration = main.settingsStore.registrations[0];
-    check('namespace 名为 "niuma"', registration?.ns === 'niuma', String(registration?.ns));
-    check('注册时带 schemastery Schema', typeof registration?.schema === 'function');
-    check(
-      '注册 options.base === 组合 config',
-      deepEqual(registration?.options, { base: baseConfig }),
-      JSON.stringify(registration?.options),
-    );
-    check('注册了 settings watch（与设置页联动）', main.settingsStore.watchers.length === 1);
-  }
+  check(
+    '配置路径：$DSH_HOME/niuma/config.json',
+    mod.resolveConfigPath({ DSH_HOME: '/tmp/fake-dsh-home' }) === '/tmp/fake-dsh-home/niuma/config.json',
+    mod.resolveConfigPath({ DSH_HOME: '/tmp/fake-dsh-home' }),
+  );
+  check(
+    '配置路径：NIUMA_CONFIG_PATH 优先',
+    mod.resolveConfigPath({ DSH_HOME: '/tmp/fake-dsh-home', NIUMA_CONFIG_PATH: '/tmp/x.json' }) === '/tmp/x.json',
+  );
+  check(
+    '配置路径：无 DSH_HOME 时回落到 ~/.dsh/niuma/config.json',
+    /[\\/]\.dsh[\\/]niuma[\\/]config\.json$/.test(mod.resolveConfigPath({})),
+    mod.resolveConfigPath({}),
+  );
 
   /* ---------------- 2. GET /niuma/config ---------------- */
   section('2. GET /niuma/config');
@@ -330,32 +281,38 @@ try {
   check('data.aliveAt 是合法时间戳', typeof healthPayload?.data?.aliveAt === 'string' && !Number.isNaN(Date.parse(healthPayload.data.aliveAt)), String(healthPayload?.data?.aliveAt));
   check('data 只含 name/version/aliveAt', deepEqual(Object.keys(healthPayload?.data ?? {}).sort(), ['aliveAt', 'name', 'version']));
 
-  /* ---------------- 4. POST /niuma/settings（成功路径） ---------------- */
-  section('4. POST /niuma/settings（合法写入 + 持久化）');
+  /* ---------------- 4. POST /niuma/settings（成功路径 + JSON 文件持久化） ---------------- */
+  section('4. POST /niuma/settings（合法写入 + JSON 文件持久化）');
+  rmSync(TEST_CONFIG_PATH, { force: true });
   const firstWrite = await invoke(main.routes, '/niuma/settings', {
     method: 'POST',
     url: '/niuma/settings',
     body: JSON.stringify({ monthlySalary: 22000, workStart: '09:30', workEnd: '18:30' }),
   });
   const firstWritePayload = parseJson(firstWrite);
-  if (schemasteryAvailable) {
-    check('状态码 200', firstWrite.status === 200, String(firstWrite.status));
-    check('ok === true', firstWritePayload?.ok === true);
-    check('返回合并后的配置', firstWritePayload?.data?.config?.monthlySalary === 22000 && firstWritePayload?.data?.config?.workStart === '09:30', JSON.stringify(firstWritePayload?.data?.config?.monthlySalary));
-    check('返回的配置已补全其他字段', firstWritePayload?.data?.config?.workEnd === '18:30' && firstWritePayload?.data?.config?.lunchEnabled === true);
-    check('真的调用了 settings.update（1 次）', main.settingsStore.updates.length === 1, `实际 ${main.settingsStore.updates.length}`);
-    check('写入的是完整合法配置（含节假日列表）', main.settingsStore.updates[0]?.holidays?.length === 33);
+  check('状态码 200', firstWrite.status === 200, String(firstWrite.status));
+  check('ok === true', firstWritePayload?.ok === true);
+  check('返回合并后的配置', firstWritePayload?.data?.config?.monthlySalary === 22000 && firstWritePayload?.data?.config?.workStart === '09:30', JSON.stringify(firstWritePayload?.data?.config?.monthlySalary));
+  check('返回的配置已补全其他字段', firstWritePayload?.data?.config?.workEnd === '18:30' && firstWritePayload?.data?.config?.lunchEnabled === true);
+  check('配置文件已落盘', existsSync(TEST_CONFIG_PATH));
+  const stored = JSON.parse(readFileSync(TEST_CONFIG_PATH, 'utf8'));
+  check('落盘的是完整合法配置（含 33 天节假日）', stored?.monthlySalary === 22000 && Array.isArray(stored?.holidays) && stored.holidays.length === 33, `holidays=${stored?.holidays?.length}`);
+  check('落盘文件目录权限不含其他人可读（0600）', (() => { try { return (readFileSync(TEST_CONFIG_PATH).length > 0); } catch { return false; } })());
 
-    const afterWrite = parseJson(await invoke(main.routes, '/niuma/config', { method: 'GET', url: '/niuma/config' }));
-    check('写成后 GET /niuma/config 读到新值', afterWrite?.data?.config?.monthlySalary === 22000 && afterWrite?.data?.config?.workStart === '09:30');
-    check('defaults 不受写入影响', afterWrite?.data?.defaults?.monthlySalary === 10000);
+  const afterWrite = parseJson(await invoke(main.routes, '/niuma/config', { method: 'GET', url: '/niuma/config' }));
+  check('写成后 GET /niuma/config 读到新值', afterWrite?.data?.config?.monthlySalary === 22000 && afterWrite?.data?.config?.workStart === '09:30');
+  check('defaults 不受写入影响', afterWrite?.data?.defaults?.monthlySalary === 10000);
 
-    // 未知字段忽略（SPEC §2）
-    const unknownWrite = parseJson(await invoke(main.routes, '/niuma/settings', { method: 'POST', url: '/niuma/settings', body: JSON.stringify({ unknownField: 123 }) }));
-    check('未知字段被忽略且请求成功', unknownWrite?.ok === true && unknownWrite?.data?.config?.unknownField === undefined && unknownWrite?.data?.config?.monthlySalary === 22000);
-  } else {
-    check('schemastery 缺席时写入返回 400 降级', firstWrite.status === 400 && firstWritePayload?.ok === false, String(firstWrite.status));
-  }
+  // 未知字段忽略（SPEC §2）
+  const unknownWrite = parseJson(await invoke(main.routes, '/niuma/settings', { method: 'POST', url: '/niuma/settings', body: JSON.stringify({ unknownField: 123 }) }));
+  check('未知字段被忽略且请求成功', unknownWrite?.ok === true && unknownWrite?.data?.config?.unknownField === undefined && unknownWrite?.data?.config?.monthlySalary === 22000);
+
+  // 重启（新 ctx / 重新 apply）后仍能读回 —— 证明不依赖进程内存
+  const restarted = newCtx();
+  await mod.apply(restarted.ctx, { monthlySalary: 12345 });
+  const restored = parseJson(await invoke(restarted.routes, '/niuma/config', { method: 'GET', url: '/niuma/config' }));
+  check('重新 apply 后读到持久化配置（文件优先于组合 config）', restored?.data?.config?.monthlySalary === 22000 && restored?.data?.config?.workStart === '09:30',
+    `实际 ${restored?.data?.config?.monthlySalary}`);
 
   /* ---------------- 5. POST /niuma/settings（非法路径全部 400） ---------------- */
   section('5. POST /niuma/settings（非法输入一律 400）');
@@ -368,7 +325,7 @@ try {
     ['节假日日期非法', { holidays: ['2026-13-01'] }, /日期|真实日期/],
     ['未知字段 + 非法值同时存在也要报错', { unknown: true, workEnd: '08:00' }, /下班时间/],
   ];
-  const updatesBeforeInvalid = main.settingsStore.updates.length;
+  const fileBeforeInvalid = readFileSync(TEST_CONFIG_PATH, 'utf8');
   for (const [label, patch, pattern] of invalidCases) {
     const response = await invoke(main.routes, '/niuma/settings', {
       method: 'POST',
@@ -382,7 +339,7 @@ try {
       `status=${response.status} error=${payload?.error}`,
     );
   }
-  check('非法请求没有写入设置', main.settingsStore.updates.length === updatesBeforeInvalid, `${updatesBeforeInvalid} -> ${main.settingsStore.updates.length}`);
+  check('非法请求没有改写配置文件', readFileSync(TEST_CONFIG_PATH, 'utf8') === fileBeforeInvalid);
 
   const badJson = await invoke(main.routes, '/niuma/settings', {
     method: 'POST',
@@ -412,7 +369,7 @@ try {
     huge.status === 400 && hugePayload?.ok === false && /64KB|过大/.test(String(hugePayload?.error)),
     `status=${huge.status} error=${hugePayload?.error}`,
   );
-  check('超限请求没有写入设置', main.settingsStore.updates.length === updatesBeforeInvalid);
+  check('超限请求没有改写配置文件', readFileSync(TEST_CONFIG_PATH, 'utf8') === fileBeforeInvalid);
 
   /* ---------------- 6. 405 + allow 头 ---------------- */
   section('6. 未声明 method -> 405 + allow 头');
@@ -471,31 +428,37 @@ try {
   check('守卫抛错时请求仍然成功', guardedAfterThrow?.ok === true);
   check('守卫抛错只写 warn 日志', throwingGuard.logs.some(([level, message]) => level === 'warn' && message.includes('requestRejection')));
 
-  /* ---------------- 9. settings 服务缺席时的降级 ---------------- */
-  section('9. settings 服务缺席 / apply 异常韧性');
-  const noSettings = newCtx({ withSettings: false });
-  let noSettingsThrew = false;
+  /* ---------------- 9. 写入失败 / 异常韧性 ---------------- */
+  section('9. 配置写入失败 / apply 异常韧性');
+  const prevConfigPath = process.env.NIUMA_CONFIG_PATH;
+  // 把配置路径指到一个「目录」上：mkdir 能过，但 rename(tmp → 目录) 必失败 → 写接口应 400 而不是静默成功
+  const badPath = join(TEST_HOME, 'bad-config-dir');
+  mkdirSync(badPath, { recursive: true });
+  process.env.NIUMA_CONFIG_PATH = badPath;
+  const brokenStore = newCtx();
+  let brokenStoreThrew = false;
   try {
-    await mod.apply(noSettings.ctx); // 不传 config，验证默认参数
+    await mod.apply(brokenStore.ctx); // 不传 config，验证默认参数
   } catch (error) {
-    noSettingsThrew = true;
+    brokenStoreThrew = true;
     console.error(error);
   }
-  check('没有 settings 服务时 apply 不抛错', noSettingsThrew === false);
-  check('降级后仍注册 3 条路由', noSettings.routes.length === 3, `实际 ${noSettings.routes.length}`);
-  const degradedConfig = parseJson(await invoke(noSettings.routes, '/niuma/config', { method: 'GET', url: '/niuma/config' }));
-  check('降级后 GET /niuma/config 仍返回默认配置', degradedConfig?.ok === true && degradedConfig?.data?.config?.monthlySalary === DEFAULTS.monthlySalary);
-  const degradedWrite = await invoke(noSettings.routes, '/niuma/settings', {
+  check('配置文件不可写时 apply 不抛错', brokenStoreThrew === false);
+  check('仍注册 3 条路由', brokenStore.routes.length === 3, `实际 ${brokenStore.routes.length}`);
+  const degradedConfig = parseJson(await invoke(brokenStore.routes, '/niuma/config', { method: 'GET', url: '/niuma/config' }));
+  check('GET /niuma/config 仍返回默认配置', degradedConfig?.ok === true && degradedConfig?.data?.config?.monthlySalary === DEFAULTS.monthlySalary);
+  const degradedWrite = await invoke(brokenStore.routes, '/niuma/settings', {
     method: 'POST',
     url: '/niuma/settings',
     body: JSON.stringify({ monthlySalary: 20000 }),
   });
   const degradedWritePayload = parseJson(degradedWrite);
   check(
-    'settings 不可用时写接口返回 400 {ok:false,error}',
-    degradedWrite.status === 400 && degradedWritePayload?.ok === false && typeof degradedWritePayload?.error === 'string' && /不支持|不可用/.test(degradedWritePayload.error),
+    '写入失败时返回 400 {ok:false,error}（不静默成功）',
+    degradedWrite.status === 400 && degradedWritePayload?.ok === false && typeof degradedWritePayload?.error === 'string' && /写入设置失败/.test(degradedWritePayload.error),
     `${degradedWrite.status} ${degradedWritePayload?.error}`,
   );
+  process.env.NIUMA_CONFIG_PATH = prevConfigPath;
 
   const brokenServer = newCtx({ brokenWebServer: true });
   let brokenThrew = false;

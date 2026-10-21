@@ -40,6 +40,17 @@ export const DEFAULT_EXTRA_WORKDAYS = Object.freeze([
   '2026-10-10', // 国庆调休：周六上班
 ]);
 
+/** 2026 年七个法定节假日区段（面板「节假日」卡片用；日期与上面 DEFAULT_HOLIDAYS 逐段对应） */
+export const HOLIDAY_BLOCKS = Object.freeze([
+  { id: 'newYear', from: '2026-01-01', to: '2026-01-03', days: 3 },
+  { id: 'spring', from: '2026-02-15', to: '2026-02-23', days: 9 },
+  { id: 'qingming', from: '2026-04-04', to: '2026-04-06', days: 3 },
+  { id: 'labour', from: '2026-05-01', to: '2026-05-05', days: 5 },
+  { id: 'dragon', from: '2026-06-19', to: '2026-06-21', days: 3 },
+  { id: 'midAutumn', from: '2026-09-25', to: '2026-09-27', days: 3 },
+  { id: 'national', from: '2026-10-01', to: '2026-10-07', days: 7 },
+]);
+
 /** 数据出处，面板脚注展示用 */
 export const HOLIDAY_SOURCE = Object.freeze({
   year: 2026,

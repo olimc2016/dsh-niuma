@@ -20,6 +20,11 @@
 - **整页滚动**：面板根容器改为自身滚动容器（`height:100% + overflow:auto`，与 `dsh-token-meter-panel` /
   `dsh-worktodo` 同一写法）——展开设置后底部不再被裁，出现完整滚动条
 - **本月已赚**：倒计时行新增第三张卡（金色强调），首屏可见
+- **设置持久化改为自己的 JSON 文件**（修复「保存失败：当前环境不支持写入设置（settings 服务不可用）」）：
+  保存到 `$DSH_HOME/niuma/config.json`（可用 `NIUMA_CONFIG_PATH` 覆盖），原子写 + 0600 权限；
+  不再依赖 DSH 的 settings 服务（desktop 0.2.1-rc.2 里该服务缺席），重启后配置仍在
+- **金额统一带「元」**：主卡/换算/明细/本月已赚全部显示为 `1,222.22 元` 形式
+- **节假日独立卡片**：七个法定假日区段（名称 + 天数 + 日期范围）+ 调休上班日统计，可点来源链接
 - 面板整体 `max-width: 760px` 居中，深浅色主题统一（全部基于 `--dsw-alias-*` + `color-mix`）
 - 预览工具：`node tools/preview.mjs --expand` 可展开设置区截图；README 预览图更新
 

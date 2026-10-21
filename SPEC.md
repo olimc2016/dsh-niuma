@@ -153,8 +153,11 @@ export const inject = ['webServer'];
 export async function apply(ctx, config = {}) { ... }
 ```
 
-- settings 服务可选：`ctx.inject(['settings'], cb)` 里 `settings.register('niuma', Schema, { base: config })`；拿不到 settings 时就用 `config`+`DEFAULTS`，不得让插件加载失败。
-- schemastery 用**动态 import**，失败则退化为「只读默认值，设置写接口返回 400」。
+- **配置持久化：自己的 JSON 文件**（不依赖 DSH settings 服务）
+  - 路径：`NIUMA_CONFIG_PATH` → `$DSH_HOME/niuma/config.json` → `~/.dsh/niuma/config.json`
+  - 读取：apply 时读文件（坏 JSON / 不存在都退回 `config` + `DEFAULTS`，不抛）
+  - 写入：`POST /niuma/settings` 校验后原子写（tmp + rename，目录 0700 / 文件 0600）
+  - 写失败返回 400 `{ ok:false, error:"写入设置失败：…" }`，绝不静默成功
 - 路由（全部走 `ctx.get('connection')?.requestRejection` 守卫，注册在 `ctx.effect` 里并返回 dispose）：
   - `GET /niuma/config` → `{ ok: true, data: { config, defaults: DEFAULTS, holidaySource: HOLIDAY_SOURCE } }`
   - `POST /niuma/settings`（JSON body = 部分配置）→ 校验通过 `{ ok: true, data: { config } }`；非法 `{ ok: false, error }` 400；body 上限 64KB
