@@ -67,6 +67,9 @@ eq('刷新间隔 1000ms 合法', normalizeConfig({ updateMs: 1000 }).errors.leng
 eq('刷新间隔 15ms 非法', normalizeConfig({ updateMs: 15 }).errors.length, 1);
 eq('刷新间隔 1001ms 非法', normalizeConfig({ updateMs: 1001 }).errors.length, 1);
 eq('刷新间隔 100.5 非法', normalizeConfig({ updateMs: 100.5 }).errors.length, 1);
+eq('加速默认关闭', defaults.turbo, false);
+eq('turbo=true 合法', normalizeConfig({ turbo: true }).config.turbo, true);
+eq('turbo 非布尔按 false 处理', normalizeConfig({ turbo: 'yes' }).config.turbo, false);
 eq('非法月薪被记录', normalizeConfig({ monthlySalary: -1 }).errors.length > 0, true);
 eq('下班早于上班被记录', normalizeConfig({ workStart: '18:00', workEnd: '09:00' }).errors.length > 0, true);
 eq('午休超出班次被记录', normalizeConfig({ lunchStart: '08:00', lunchEnd: '12:00' }).errors.length > 0, true);

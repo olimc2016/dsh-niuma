@@ -125,6 +125,7 @@ const zh = {
   'settings': '设置',
   'decimalsLabel': '小数',
   'decimalsUnit': '位',
+  'turboLabel': '加速',
   'refreshRate': '刷新频率',
   'rateSecond': '按秒（1s）',
   'rateFrame': '刷新率（≈16ms）',
@@ -230,6 +231,7 @@ const en = {
   'settings': 'Settings',
   'decimalsLabel': 'Decimals',
   'decimalsUnit': 'dp',
+  'turboLabel': 'Turbo',
   'refreshRate': 'Refresh rate',
   'rateSecond': 'Per second (1s)',
   'rateFrame': 'Display rate (~16ms)',
@@ -490,12 +492,106 @@ function SectionTitle(props) {
 }
 
 /** 今日已赚主卡：渐变底 + 超大金额 + 进度条（视觉焦点只有这一处）。 */
+/* ------------------------------------------------------------------ *
+ * 滚动金额：把金额拆成逐位的「滚动轮盘」，数字只向上滚，制造连续跳动的加速感
+ * ------------------------------------------------------------------ */
+const ROLL_BLOCKS = Array.from({ length: 40 }, (_, i) => String(i % 10));
+
+/** 单个数字轮：40 个 0-9 循环块，按「向后滚一格」推进，避免 9→0 时倒着跳。 */
+function RollingDigit(props) {
+  const digit = props.digit;
+  const heightEm = 1.22;
+  const widthEm = 0.62;
+  const idxRef = React.useRef(digit);
+  const [idx, setIdx] = React.useState(digit);
+  const [instant, setInstant] = React.useState(false);
+  React.useEffect(() => {
+    const current = idxRef.current % 10;
+    if (digit === current) return undefined;
+    // 金额只增不减：统一向前滚，9→0 也是继续往上滚
+    const delta = (digit - current + 10) % 10;
+    const next = idxRef.current + delta;
+    idxRef.current = next;
+    setIdx(next);
+    let timer = 0;
+    if (next >= 30) {
+      // 轮盘快用完时静默归位（同一数字，视觉无跳变）
+      timer = setTimeout(() => {
+        const normalized = next % 10;
+        idxRef.current = normalized;
+        setInstant(true);
+        setIdx(normalized);
+        timer = setTimeout(() => setInstant(false), 30);
+      }, 240);
+    }
+    return () => clearTimeout(timer);
+  }, [digit]);
+  return React.createElement('span', {
+    'aria-hidden': 'true',
+    style: {
+      display: 'inline-block', position: 'relative', overflow: 'hidden',
+      width: `${widthEm}em`, height: `${heightEm}em`, verticalAlign: 'baseline',
+    },
+  }, [
+    React.createElement('span', {
+      key: 'ghost',
+      style: { visibility: 'hidden', display: 'block', height: `${heightEm}em`, lineHeight: `${heightEm}em` },
+    }, '0'),
+    React.createElement('span', {
+      key: 'strip',
+      style: {
+        position: 'absolute', left: 0, top: 0, display: 'flex', flexDirection: 'column',
+        transform: `translateY(-${idx * 2.5}%)`,
+        transition: instant ? 'none' : 'transform .22s cubic-bezier(.2,.7,.3,1)',
+        willChange: 'transform',
+      },
+    }, ROLL_BLOCKS.map((value, i) => React.createElement('span', {
+      key: i,
+      style: { display: 'block', height: `${heightEm}em`, lineHeight: `${heightEm}em` },
+    }, value))),
+  ]);
+}
+
+/** 金额文本 → 逐位滚动（逗号/小数点等静态字符原样显示）。 */
+function RollingMoney(props) {
+  const text = String(props.text == null ? '' : props.text);
+  return React.createElement('span', {
+    style: {
+      display: 'inline-flex', alignItems: 'baseline', letterSpacing: 0, position: 'relative',
+      // 等宽字体让每个数字轮宽度稳定（不裁字、不抖动）
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      ...(props.style || {}),
+    },
+  }, [
+    // 读屏/复制/测试用：完整金额文本（视觉上隐藏）
+    React.createElement('span', {
+      key: 'sr',
+      style: {
+        position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+        overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+      },
+    }, text),
+    React.createElement('span', {
+      key: 'visual',
+      'aria-hidden': 'true',
+      style: { display: 'inline-flex', alignItems: 'baseline' },
+    }, text.split('').map((char, i) => (/[0-9]/.test(char)
+      ? React.createElement(RollingDigit, { key: `d${i}`, digit: Number(char) })
+      : React.createElement('span', {
+        key: `s${i}`,
+        style: { display: 'inline-block', lineHeight: '1.22em' },
+      }, char)))),
+  ]);
+}
+
 function HeroCard(props) {
   const t = props.t;
   const snap = props.snap;
   const rates = snap.rates;
   const decimals = Number.isInteger(props.decimals) ? props.decimals : 4;
   const onDecimalsChange = props.onDecimalsChange;
+  const turbo = props.turbo === true;
+  const onTurboChange = props.onTurboChange;
   const progress = Math.max(0, Math.min(1, Number(snap.todayProgress) || 0));
   const percentText = `${(progress * 100).toFixed(1)}%`;
   const live = snap.status === 'working';
@@ -549,15 +645,16 @@ function HeroCard(props) {
       key: 'amt',
       style: { display: 'flex', alignItems: 'baseline', gap: 7, marginTop: 4, flexWrap: 'wrap' },
     }, [
-      React.createElement('span', {
+      React.createElement(RollingMoney, {
         key: 'val',
+        text: formatMoney(snap.todayEarned, decimals),
         style: {
-          fontSize: 46, lineHeight: 1.12, fontWeight: 800, letterSpacing: '-1.2px',
+          fontSize: 46, lineHeight: 1.12, fontWeight: 800,
           ...GOLD,
           ...NUM,
           ...(rest ? { opacity: 0.62 } : {}),
         },
-      }, formatMoney(snap.todayEarned, decimals)),
+      }),
       React.createElement('span', {
         key: 'unit',
         style: { fontSize: 18, fontWeight: 700, color: C.label2, ...NUM },
@@ -583,6 +680,24 @@ function HeroCard(props) {
           },
         }, [0, 1, 2, 3, 4, 5, 6].map((n) => React.createElement('option', { key: n, value: String(n) }, String(n)))),
         React.createElement('span', { key: 'u' }, t('decimalsUnit')),
+      ]),
+      React.createElement('label', {
+        key: 'turbo',
+        title: t('turboLabel'),
+        style: {
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          fontSize: 10, padding: '1px 6px', borderRadius: 999,
+          border: `1px solid ${turbo ? `color-mix(in srgb, ${GOLD_TINT} 60%, ${C.border1})` : C.border1}`,
+          background: turbo ? `color-mix(in srgb, ${GOLD_TINT} 16%, transparent)` : 'transparent',
+          color: turbo ? C.label2 : C.label3, cursor: 'pointer', ...NUM,
+        },
+      }, [
+        React.createElement('input', {
+          key: 'i', type: 'checkbox', checked: turbo,
+          onChange: (event) => onTurboChange && onTurboChange(event.target.checked),
+          style: { accentColor: GOLD_TINT, width: 12, height: 12, margin: 0, cursor: 'inherit' },
+        }),
+        React.createElement('span', { key: 'l' }, t('turboLabel')),
       ]),
     ]),
     React.createElement('div', {
@@ -1094,7 +1209,7 @@ function NiumaPanel(props) {
   }, [remote.data]);
 
   // 刷新频率：1000=按秒；16≈屏幕刷新率（连续滚动）；中间值为毫秒级
-  const updateMs = Number.isInteger(cfg.updateMs) ? cfg.updateMs : 1000;
+  const updateMs = cfg.turbo === true ? 16 : (Number.isInteger(cfg.updateMs) ? cfg.updateMs : 1000);
   const now = useClock(updateMs);
 
   // 每次刷新重算（core 是纯函数，重算代价极小；已下班/休息日会稳定在日工资或 0）。
@@ -1238,6 +1353,7 @@ function NiumaPanel(props) {
       .catch((error) => setQuickError(String((error && error.message) || error)));
   }, [remote.refresh]);
   const onDecimalsChange = (value) => postConfig({ decimals: value });
+  const onTurboChange = (checked) => postConfig({ turbo: Boolean(checked) });
 
   const holidaySource = (remote.data && remote.data.holidaySource) || HOLIDAY_SOURCE;
   const banner = remote.status === 'failed'
@@ -1337,7 +1453,7 @@ function NiumaPanel(props) {
       ])
       : null,
 
-    React.createElement(HeroCard, { key: 'hero', t, snap, decimals: cfg.decimals, onDecimalsChange }),
+    React.createElement(HeroCard, { key: 'hero', t, snap, decimals: cfg.decimals, onDecimalsChange, turbo: cfg.turbo, onTurboChange }),
     React.createElement(CountdownRow, { key: 'countdown', t, snap }),
     React.createElement('div', {
       key: 'ratesHead',

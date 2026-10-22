@@ -31,6 +31,8 @@ export const DEFAULTS = Object.freeze({
   decimals: 4,
   /** 面板刷新间隔 ms：1000=按秒；16≈屏幕刷新率（连续滚动）；中间值为毫秒级 */
   updateMs: 1000,
+  /** 加速（滚动模式）：true 时强制毫秒级刷新（≈屏幕刷新率），数字连续滚动 */
+  turbo: false,
 });
 
 const SALARY_MAX = 10_000_000;
@@ -163,7 +165,8 @@ export function normalizeConfig(patch) {
   merged.lunchEnabled = merged.lunchEnabled !== false;
   merged.lunchPaid = merged.lunchPaid === true;
 
-  // 展示/刷新偏好：主金额小数位 0-6；刷新间隔 16-1000ms（16 ≈ 屏幕刷新率）
+  // 展示/刷新偏好：主金额小数位 0-6；刷新间隔 16-1000ms（16 ≈ 屏幕刷新率）；加速开关
+  merged.turbo = merged.turbo === true;
   const decimals = Number(merged.decimals);
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 6) {
     errors.push('小数位数需要是 0~6 的整数');
