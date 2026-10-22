@@ -493,39 +493,19 @@ function SectionTitle(props) {
 
 /** 今日已赚主卡：渐变底 + 超大金额 + 进度条（视觉焦点只有这一处）。 */
 /* ------------------------------------------------------------------ *
- * 滚动金额：把金额拆成逐位的「滚动轮盘」，数字只向上滚，制造连续跳动的加速感
+ * 滚动金额：连续的「机械里程表」
+ *   每一位不是等金额变了才跳一格，而是按位权连续转动：
+ *   最后一位小数转得飞快（0-9 循环），前一位慢 10 倍，整数位几乎不动。
+ *   加速模式下每帧（rAF）更新 wheel 位置，看起来就是数字在持续往上滚。
  * ------------------------------------------------------------------ */
-const ROLL_BLOCKS = Array.from({ length: 40 }, (_, i) => String(i % 10));
+const ROLL_BLOCKS = Array.from({ length: 11 }, (_, i) => String(i % 10));
 
-/** 单个数字轮：40 个 0-9 循环块，按「向后滚一格」推进，避免 9→0 时倒着跳。 */
+/** 单个数字轮：`position` 是连续位置（单位=1 个数字格，小数部分=滚到一半）。 */
 function RollingDigit(props) {
-  const digit = props.digit;
   const heightEm = 1.22;
   const widthEm = 0.62;
-  const idxRef = React.useRef(digit);
-  const [idx, setIdx] = React.useState(digit);
-  const [instant, setInstant] = React.useState(false);
-  React.useEffect(() => {
-    const current = idxRef.current % 10;
-    if (digit === current) return undefined;
-    // 金额只增不减：统一向前滚，9→0 也是继续往上滚
-    const delta = (digit - current + 10) % 10;
-    const next = idxRef.current + delta;
-    idxRef.current = next;
-    setIdx(next);
-    let timer = 0;
-    if (next >= 30) {
-      // 轮盘快用完时静默归位（同一数字，视觉无跳变）
-      timer = setTimeout(() => {
-        const normalized = next % 10;
-        idxRef.current = normalized;
-        setInstant(true);
-        setIdx(normalized);
-        timer = setTimeout(() => setInstant(false), 30);
-      }, 240);
-    }
-    return () => clearTimeout(timer);
-  }, [digit]);
+  const pos = Number.isFinite(props.position) ? props.position : 0;
+  const wheel = ((pos % 10) + 10) % 10;
   return React.createElement('span', {
     'aria-hidden': 'true',
     style: {
@@ -541,8 +521,7 @@ function RollingDigit(props) {
       key: 'strip',
       style: {
         position: 'absolute', left: 0, top: 0, display: 'flex', flexDirection: 'column',
-        transform: `translateY(-${idx * 2.5}%)`,
-        transition: instant ? 'none' : 'transform .22s cubic-bezier(.2,.7,.3,1)',
+        transform: `translateY(${-(wheel * heightEm)}em)`,
         willChange: 'transform',
       },
     }, ROLL_BLOCKS.map((value, i) => React.createElement('span', {
@@ -552,18 +531,32 @@ function RollingDigit(props) {
   ]);
 }
 
-/** 金额文本 → 逐位滚动（逗号/小数点等静态字符原样显示）。 */
+/**
+ * 金额 → 连续滚轮。`value` 是原始金额，`decimals` 决定小数位。
+ * 每一位的轮位 = value * 10^decimals / 10^(该位右侧数字个数)，因此低位快、高位慢。
+ */
 function RollingMoney(props) {
-  const text = String(props.text == null ? '' : props.text);
+  const decimals = Math.max(0, Math.min(6, Number.isInteger(props.decimals) ? props.decimals : 4));
+  const text = formatMoney(props.value, decimals);
+  const scale = 10 ** decimals;
+  // 从右往左数「该位右侧还有几个数字」，得到每位位权
+  const chars = text.split('');
+  const significances = new Array(chars.length).fill(-1);
+  let seen = 0;
+  for (let i = chars.length - 1; i >= 0; i -= 1) {
+    if (/[0-9]/.test(chars[i])) {
+      significances[i] = seen;
+      seen += 1;
+    }
+  }
   return React.createElement('span', {
     style: {
       display: 'inline-flex', alignItems: 'baseline', letterSpacing: 0, position: 'relative',
-      // 等宽字体让每个数字轮宽度稳定（不裁字、不抖动）
+      // 等宽字体保证每个数字轮宽度稳定（不裁字、不抖动）
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       ...(props.style || {}),
     },
   }, [
-    // 读屏/复制/测试用：完整金额文本（视觉上隐藏）
     React.createElement('span', {
       key: 'sr',
       style: {
@@ -575,12 +568,16 @@ function RollingMoney(props) {
       key: 'visual',
       'aria-hidden': 'true',
       style: { display: 'inline-flex', alignItems: 'baseline' },
-    }, text.split('').map((char, i) => (/[0-9]/.test(char)
-      ? React.createElement(RollingDigit, { key: `d${i}`, digit: Number(char) })
-      : React.createElement('span', {
-        key: `s${i}`,
-        style: { display: 'inline-block', lineHeight: '1.22em' },
-      }, char)))),
+    }, chars.map((char, i) => {
+      if (!/[0-9]/.test(char)) {
+        return React.createElement('span', {
+          key: `s${i}`,
+          style: { display: 'inline-block', lineHeight: '1.22em' },
+        }, char);
+      }
+      const position = (Number(props.value) || 0) * scale / 10 ** significances[i];
+      return React.createElement(RollingDigit, { key: `d${i}`, position });
+    })),
   ]);
 }
 
@@ -647,7 +644,8 @@ function HeroCard(props) {
     }, [
       React.createElement(RollingMoney, {
         key: 'val',
-        text: formatMoney(snap.todayEarned, decimals),
+        value: snap.todayEarned,
+        decimals,
         style: {
           fontSize: 46, lineHeight: 1.12, fontWeight: 800,
           ...GOLD,
