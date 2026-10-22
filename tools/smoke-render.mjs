@@ -183,6 +183,9 @@ expectText('节假日卡片-春节', '春节');
 expectText('节假日卡片-调休说明', '调休上班');
 expectText('2027 预估分组', '2027 年（预估）');
 expectText('本月已工作天数', '本月已工作');
+expectText('主金额小数位选择', '小数');
+expectText('刷新频率设置', '刷新频率');
+expectText('按秒选项', '按秒');
 expectText('剩余工作日', '剩余工作日');
 expectText('预估标注', '预估');
 

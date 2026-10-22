@@ -123,6 +123,11 @@ const zh = {
   'configFailed': '设置读取失败，使用默认值',
   'retry': '重试',
   'settings': '设置',
+  'decimalsLabel': '小数',
+  'decimalsUnit': '位',
+  'refreshRate': '刷新频率',
+  'rateSecond': '按秒（1s）',
+  'rateFrame': '刷新率（≈16ms）',
   'settingsHint': '改完点「保存」生效；格式不对会在下方红字提示，不影响计时。',
   'salaryField': '实收月薪',
   'groupSalary': '工资',
@@ -223,6 +228,11 @@ const en = {
   'configFailed': 'Failed to load settings, using defaults',
   'retry': 'Retry',
   'settings': 'Settings',
+  'decimalsLabel': 'Decimals',
+  'decimalsUnit': 'dp',
+  'refreshRate': 'Refresh rate',
+  'rateSecond': 'Per second (1s)',
+  'rateFrame': 'Display rate (~16ms)',
   'settingsHint': 'Click Save to apply. Invalid input is shown in red below; the ticker keeps running.',
   'salaryField': 'Net monthly salary',
   'groupSalary': 'Salary',
@@ -312,6 +322,7 @@ function formFromConfig(config) {
     lunchStart: String(config.lunchStart == null ? '' : config.lunchStart),
     lunchEnd: String(config.lunchEnd == null ? '' : config.lunchEnd),
     lunchPaid: config.lunchPaid === true,
+    updateMs: String(config.updateMs == null ? 1000 : config.updateMs),
   };
 }
 
@@ -326,6 +337,7 @@ function patchFromForm(form) {
     lunchStart: String(form.lunchStart || '').trim(),
     lunchEnd: String(form.lunchEnd || '').trim(),
     lunchPaid: Boolean(form.lunchPaid),
+    updateMs: Number(form.updateMs),
   };
 }
 
@@ -371,19 +383,26 @@ function useRemoteConfig() {
   return { ...state, refresh };
 }
 
-/** 当前时间：每 250ms 检查一次，只有整秒变化才 setState（每秒重算一次）。 */
-function useSecondClock() {
+/**
+ * 当前时间：按配置的刷新间隔更新。
+ * - updateMs >= 50：setInterval（按秒 / 200ms / 100ms）
+ * - updateMs <= 16：requestAnimationFrame（跟随屏幕刷新率连续滚动）
+ */
+function useClock(updateMs) {
   const [now, setNow] = React.useState(() => new Date());
   React.useEffect(() => {
-    let lastSecond = -1;
-    const timer = setInterval(() => {
-      const second = Math.floor(Date.now() / 1000);
-      if (second === lastSecond) return;
-      lastSecond = second;
-      setNow(new Date());
-    }, 250);
+    if (updateMs <= 16) {
+      let raf = 0;
+      const loop = () => {
+        setNow(new Date());
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
+      return () => cancelAnimationFrame(raf);
+    }
+    const timer = setInterval(() => setNow(new Date()), updateMs);
     return () => clearInterval(timer);
-  }, []);
+  }, [updateMs]);
   return now;
 }
 
@@ -475,6 +494,8 @@ function HeroCard(props) {
   const t = props.t;
   const snap = props.snap;
   const rates = snap.rates;
+  const decimals = Number.isInteger(props.decimals) ? props.decimals : 4;
+  const onDecimalsChange = props.onDecimalsChange;
   const progress = Math.max(0, Math.min(1, Number(snap.todayProgress) || 0));
   const percentText = `${(progress * 100).toFixed(1)}%`;
   const live = snap.status === 'working';
@@ -536,11 +557,33 @@ function HeroCard(props) {
           ...NUM,
           ...(rest ? { opacity: 0.62 } : {}),
         },
-      }, formatMoney(snap.todayEarned, 4)),
+      }, formatMoney(snap.todayEarned, decimals)),
       React.createElement('span', {
         key: 'unit',
         style: { fontSize: 18, fontWeight: 700, color: C.label2, ...NUM },
       }, '元'),
+      React.createElement('label', {
+        key: 'dec',
+        title: t('decimalsLabel'),
+        style: {
+          marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 3,
+          fontSize: 10, color: C.label3, ...NUM,
+        },
+      }, [
+        React.createElement('span', { key: 'l' }, t('decimalsLabel')),
+        React.createElement('select', {
+          key: 's',
+          value: String(decimals),
+          'aria-label': t('decimalsLabel'),
+          onChange: (event) => onDecimalsChange && onDecimalsChange(Number(event.target.value)),
+          style: {
+            height: 22, padding: '0 2px', borderRadius: 6,
+            border: `1px solid ${C.border1}`, background: C.layer2, color: C.label2,
+            fontSize: 10.5, fontVariantNumeric: 'tabular-nums', outline: 'none', cursor: 'pointer',
+          },
+        }, [0, 1, 2, 3, 4, 5, 6].map((n) => React.createElement('option', { key: n, value: String(n) }, String(n)))),
+        React.createElement('span', { key: 'u' }, t('decimalsUnit')),
+      ]),
     ]),
     React.createElement('div', {
       key: 'chips',
@@ -949,6 +992,13 @@ function SettingsSection(props) {
   ]);
 
   const lunchDisabled = !form.lunchEnabled;
+  const RATE_OPTIONS = [
+    ['1000', t('rateSecond')],
+    ['250', '250 ms'],
+    ['100', '100 ms'],
+    ['50', '50 ms'],
+    ['16', t('rateFrame')],
+  ];
 
   return React.createElement('details', {
     open: true,
@@ -974,6 +1024,14 @@ function SettingsSection(props) {
         timeRange('lunchStart', 'lunchEnd', t('groupLunch'), lunchDisabled),
         toggle('lunchEnabled', 'lunchEnabledShort', false),
         toggle('lunchPaid', 'lunchPaidShort', lunchDisabled),
+      ]),
+      row('refresh', t('refreshRate'), [
+        React.createElement('select', {
+          key: 'r',
+          value: String(form.updateMs),
+          onChange: (event) => setField('updateMs', event.target.value),
+          style: { ...selectStyle, width: 128, padding: '4px 6px' },
+        }, RATE_OPTIONS.map(([value, label]) => React.createElement('option', { key: value, value }, label))),
       ]),
     ]),
     React.createElement('div', {
@@ -1022,7 +1080,6 @@ function NiumaPanel(props) {
   const t = props && typeof props.t === 'function' ? props.t : fallbackTranslate;
 
   const remote = useRemoteConfig();
-  const now = useSecondClock();
 
   // 服务端配置 -> 规范化配置；坏数据/缺字段一律退回 DEFAULTS（计算不会抛）。
   const cfg = React.useMemo(() => {
@@ -1036,7 +1093,11 @@ function NiumaPanel(props) {
     }
   }, [remote.data]);
 
-  // 每秒重算（core 是纯函数，重算代价极小；已下班/休息日会稳定在日工资或 0）。
+  // 刷新频率：1000=按秒；16≈屏幕刷新率（连续滚动）；中间值为毫秒级
+  const updateMs = Number.isInteger(cfg.updateMs) ? cfg.updateMs : 1000;
+  const now = useClock(updateMs);
+
+  // 每次刷新重算（core 是纯函数，重算代价极小；已下班/休息日会稳定在日工资或 0）。
   const snap = React.useMemo(() => earnedToday(cfg, now), [cfg, now]);
   const rates = snap && snap.rates ? snap.rates : computeRates(cfg, snap && snap.dateKey);
   const baseForm = React.useMemo(() => formFromConfig(cfg), [cfg]);
@@ -1157,6 +1218,27 @@ function NiumaPanel(props) {
       });
   };
 
+  // 快速保存：主金额小数位这种即时偏好，不走设置表单的「保存」流程
+  const [quickError, setQuickError] = React.useState('');
+  const postConfig = React.useCallback((patch) => {
+    if (typeof fetch !== 'function') return;
+    fetch(`${ROUTE_BASE}/settings`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(patch),
+    })
+      .then(async (response) => {
+        let body = null;
+        try { body = await response.json(); } catch (error) { body = null; }
+        if (!response.ok || !body || body.ok !== true) throw new Error((body && body.error) || `HTTP ${response.status}`);
+        setQuickError('');
+        remote.refresh();
+      })
+      .catch((error) => setQuickError(String((error && error.message) || error)));
+  }, [remote.refresh]);
+  const onDecimalsChange = (value) => postConfig({ decimals: value });
+
   const holidaySource = (remote.data && remote.data.holidaySource) || HOLIDAY_SOURCE;
   const banner = remote.status === 'failed'
     ? {
@@ -1255,7 +1337,7 @@ function NiumaPanel(props) {
       ])
       : null,
 
-    React.createElement(HeroCard, { key: 'hero', t, snap }),
+    React.createElement(HeroCard, { key: 'hero', t, snap, decimals: cfg.decimals, onDecimalsChange }),
     React.createElement(CountdownRow, { key: 'countdown', t, snap }),
     React.createElement('div', {
       key: 'ratesHead',

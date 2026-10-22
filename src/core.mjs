@@ -27,6 +27,10 @@ export const DEFAULTS = Object.freeze({
   lunchPaid: false,
   holidays: DEFAULT_HOLIDAYS,
   extraWorkdays: DEFAULT_EXTRA_WORKDAYS,
+  /** 主金额小数位（0-6） */
+  decimals: 4,
+  /** 面板刷新间隔 ms：1000=按秒；16≈屏幕刷新率（连续滚动）；中间值为毫秒级 */
+  updateMs: 1000,
 });
 
 const SALARY_MAX = 10_000_000;
@@ -158,6 +162,22 @@ export function normalizeConfig(patch) {
   // 布尔
   merged.lunchEnabled = merged.lunchEnabled !== false;
   merged.lunchPaid = merged.lunchPaid === true;
+
+  // 展示/刷新偏好：主金额小数位 0-6；刷新间隔 16-1000ms（16 ≈ 屏幕刷新率）
+  const decimals = Number(merged.decimals);
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 6) {
+    errors.push('小数位数需要是 0~6 的整数');
+    merged.decimals = Number.isInteger(decimals) ? decimals : DEFAULTS.decimals;
+  } else {
+    merged.decimals = decimals;
+  }
+  const updateMs = Number(merged.updateMs);
+  if (!Number.isInteger(updateMs) || updateMs < 16 || updateMs > 1000) {
+    errors.push('刷新间隔需要是 16~1000ms 的整数');
+    merged.updateMs = Number.isInteger(updateMs) ? updateMs : DEFAULTS.updateMs;
+  } else {
+    merged.updateMs = updateMs;
+  }
 
   // 日期列表
   const holidays = normalizeDateList(merged.holidays);
