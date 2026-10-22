@@ -126,6 +126,10 @@ const zh = {
   'decimalsLabel': '小数',
   'decimalsUnit': '位',
   'turboLabel': '加速',
+  'updateAvailable': '发现新版本 v{version}',
+  'updateNow': '立即更新',
+  'updating': '正在下载新版本…',
+  'updateStaged': 'v{version} 已下载 · 重启 DSH 生效',
   'refreshRate': '刷新频率',
   'rateSecond': '按秒（1s）',
   'rateFrame': '刷新率（≈16ms）',
@@ -232,6 +236,10 @@ const en = {
   'decimalsLabel': 'Decimals',
   'decimalsUnit': 'dp',
   'turboLabel': 'Turbo',
+  'updateAvailable': 'New version v{version}',
+  'updateNow': 'Update now',
+  'updating': 'Downloading update…',
+  'updateStaged': 'v{version} downloaded · restart DSH to apply',
   'refreshRate': 'Refresh rate',
   'rateSecond': 'Per second (1s)',
   'rateFrame': 'Display rate (~16ms)',
@@ -385,6 +393,43 @@ function useRemoteConfig() {
   return { ...state, refresh };
 }
 
+/** 版本 / 自动更新状态：挂载时查一次、每 6 小时刷新；点「立即更新」触发下载暂存。 */
+function useUpdateInfo() {
+  const [state, setState] = React.useState({ status: 'loading', data: null, error: null });
+  const load = React.useCallback(() => {
+    if (typeof fetch !== 'function') {
+      setState({ status: 'failed', data: null, error: 'fetch unavailable' });
+      return;
+    }
+    fetch(`${ROUTE_BASE}/update`, { cache: 'no-store', credentials: 'same-origin' })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok || !body || body.ok !== true) throw new Error((body && body.error) || `HTTP ${response.status}`);
+        return body.data || null;
+      })
+      .then((data) => setState({ status: 'ready', data, error: null }))
+      .catch((error) => setState({ status: 'failed', data: null, error: String((error && error.message) || error) }));
+  }, []);
+  React.useEffect(() => {
+    load();
+    const timer = setInterval(load, 6 * 3600 * 1000);
+    return () => clearInterval(timer);
+  }, [load]);
+  const download = React.useCallback(() => {
+    setState((prev) => ({ ...prev, status: 'updating' }));
+    if (typeof fetch !== 'function') return;
+    fetch(`${ROUTE_BASE}/update`, { method: 'POST', credentials: 'same-origin' })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok || !body || body.ok !== true) throw new Error((body && body.error) || `HTTP ${response.status}`);
+        return body.data || null;
+      })
+      .then((data) => setState({ status: 'ready', data, error: null }))
+      .catch((error) => setState({ status: 'failed', data: null, error: String((error && error.message) || error) }));
+  }, []);
+  return { ...state, reload: load, download };
+}
+
 /**
  * 当前时间：按配置的刷新间隔更新。
  * - updateMs >= 50：setInterval（按秒 / 200ms / 100ms）
@@ -493,92 +538,18 @@ function SectionTitle(props) {
 
 /** 今日已赚主卡：渐变底 + 超大金额 + 进度条（视觉焦点只有这一处）。 */
 /* ------------------------------------------------------------------ *
- * 滚动金额：连续的「机械里程表」
- *   每一位不是等金额变了才跳一格，而是按位权连续转动：
- *   最后一位小数转得飞快（0-9 循环），前一位慢 10 倍，整数位几乎不动。
- *   加速模式下每帧（rAF）更新 wheel 位置，看起来就是数字在持续往上滚。
+ * 主金额：毫秒级刷新时数字本身高速变化（末位小数在 60fps 下每帧都在跳），
+ * 视觉上就是「欻欻」往上滚；不做逐位轮盘，避免滚动裁切带来的重影。
  * ------------------------------------------------------------------ */
-const ROLL_BLOCKS = Array.from({ length: 11 }, (_, i) => String(i % 10));
-
-/** 单个数字轮：`position` 是连续位置（单位=1 个数字格，小数部分=滚到一半）。 */
-function RollingDigit(props) {
-  const heightEm = 1.22;
-  const widthEm = 0.62;
-  const pos = Number.isFinite(props.position) ? props.position : 0;
-  const wheel = ((pos % 10) + 10) % 10;
-  return React.createElement('span', {
-    'aria-hidden': 'true',
-    style: {
-      display: 'inline-block', position: 'relative', overflow: 'hidden',
-      width: `${widthEm}em`, height: `${heightEm}em`, verticalAlign: 'baseline',
-    },
-  }, [
-    React.createElement('span', {
-      key: 'ghost',
-      style: { visibility: 'hidden', display: 'block', height: `${heightEm}em`, lineHeight: `${heightEm}em` },
-    }, '0'),
-    React.createElement('span', {
-      key: 'strip',
-      style: {
-        position: 'absolute', left: 0, top: 0, display: 'flex', flexDirection: 'column',
-        transform: `translateY(${-(wheel * heightEm)}em)`,
-        willChange: 'transform',
-      },
-    }, ROLL_BLOCKS.map((value, i) => React.createElement('span', {
-      key: i,
-      style: { display: 'block', height: `${heightEm}em`, lineHeight: `${heightEm}em` },
-    }, value))),
-  ]);
-}
-
-/**
- * 金额 → 连续滚轮。`value` 是原始金额，`decimals` 决定小数位。
- * 每一位的轮位 = value * 10^decimals / 10^(该位右侧数字个数)，因此低位快、高位慢。
- */
 function RollingMoney(props) {
   const decimals = Math.max(0, Math.min(6, Number.isInteger(props.decimals) ? props.decimals : 4));
-  const text = formatMoney(props.value, decimals);
-  const scale = 10 ** decimals;
-  // 从右往左数「该位右侧还有几个数字」，得到每位位权
-  const chars = text.split('');
-  const significances = new Array(chars.length).fill(-1);
-  let seen = 0;
-  for (let i = chars.length - 1; i >= 0; i -= 1) {
-    if (/[0-9]/.test(chars[i])) {
-      significances[i] = seen;
-      seen += 1;
-    }
-  }
   return React.createElement('span', {
     style: {
-      display: 'inline-flex', alignItems: 'baseline', letterSpacing: 0, position: 'relative',
-      // 等宽字体保证每个数字轮宽度稳定（不裁字、不抖动）
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      display: 'inline-block', whiteSpace: 'nowrap', letterSpacing: '-1.2px',
+      fontVariantNumeric: 'tabular-nums',
       ...(props.style || {}),
     },
-  }, [
-    React.createElement('span', {
-      key: 'sr',
-      style: {
-        position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
-        overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
-      },
-    }, text),
-    React.createElement('span', {
-      key: 'visual',
-      'aria-hidden': 'true',
-      style: { display: 'inline-flex', alignItems: 'baseline' },
-    }, chars.map((char, i) => {
-      if (!/[0-9]/.test(char)) {
-        return React.createElement('span', {
-          key: `s${i}`,
-          style: { display: 'inline-block', lineHeight: '1.22em' },
-        }, char);
-      }
-      const position = (Number(props.value) || 0) * scale / 10 ** significances[i];
-      return React.createElement(RollingDigit, { key: `d${i}`, position });
-    })),
-  ]);
+  }, formatMoney(props.value, decimals));
 }
 
 function HeroCard(props) {
@@ -635,8 +606,48 @@ function HeroCard(props) {
           : null,
         t('earnedToday'),
       ]),
-      React.createElement('span', { key: 'b', style: { fontSize: 11, color: C.label3, ...NUM } },
-        `${t('todayOn')} ${snap.dateKey}`),
+      React.createElement('div', {
+        key: 'b',
+        style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 },
+      }, [
+        React.createElement('span', { key: 'd', style: { fontSize: 11, color: C.label3, ...NUM } },
+          `${t('todayOn')} ${snap.dateKey}`),
+        React.createElement('div', { key: 'c', style: { display: 'inline-flex', alignItems: 'center', gap: 6 } }, [
+          React.createElement('label', {
+            key: 'dec', title: t('decimalsLabel'),
+            style: { display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: C.label3, ...NUM },
+          }, [
+            React.createElement('span', { key: 'l' }, t('decimalsLabel')),
+            React.createElement('select', {
+              key: 's', value: String(decimals), 'aria-label': t('decimalsLabel'),
+              onChange: (event) => onDecimalsChange && onDecimalsChange(Number(event.target.value)),
+              style: {
+                height: 22, padding: '0 2px', borderRadius: 6,
+                border: `1px solid ${C.border1}`, background: C.layer2, color: C.label2,
+                fontSize: 10.5, fontVariantNumeric: 'tabular-nums', outline: 'none', cursor: 'pointer',
+              },
+            }, [0, 1, 2, 3, 4, 5, 6].map((n) => React.createElement('option', { key: n, value: String(n) }, String(n)))),
+            React.createElement('span', { key: 'u' }, t('decimalsUnit')),
+          ]),
+          React.createElement('label', {
+            key: 'turbo', title: t('turboLabel'),
+            style: {
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              fontSize: 10, padding: '1px 6px', borderRadius: 999,
+              border: `1px solid ${turbo ? `color-mix(in srgb, ${GOLD_TINT} 60%, ${C.border1})` : C.border1}`,
+              background: turbo ? `color-mix(in srgb, ${GOLD_TINT} 16%, transparent)` : 'transparent',
+              color: turbo ? C.label2 : C.label3, cursor: 'pointer', ...NUM,
+            },
+          }, [
+            React.createElement('input', {
+              key: 'i', type: 'checkbox', checked: turbo,
+              onChange: (event) => onTurboChange && onTurboChange(event.target.checked),
+              style: { accentColor: GOLD_TINT, width: 12, height: 12, margin: 0, cursor: 'inherit' },
+            }),
+            React.createElement('span', { key: 'l' }, t('turboLabel')),
+          ]),
+        ]),
+      ]),
     ]),
     React.createElement('div', {
       key: 'amt',
@@ -648,7 +659,7 @@ function HeroCard(props) {
         decimals,
         style: {
           fontSize: 46, lineHeight: 1.12, fontWeight: 800,
-          ...GOLD,
+          color: '#D9A441',
           ...NUM,
           ...(rest ? { opacity: 0.62 } : {}),
         },
@@ -657,46 +668,6 @@ function HeroCard(props) {
         key: 'unit',
         style: { fontSize: 18, fontWeight: 700, color: C.label2, ...NUM },
       }, '元'),
-      React.createElement('label', {
-        key: 'dec',
-        title: t('decimalsLabel'),
-        style: {
-          marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 3,
-          fontSize: 10, color: C.label3, ...NUM,
-        },
-      }, [
-        React.createElement('span', { key: 'l' }, t('decimalsLabel')),
-        React.createElement('select', {
-          key: 's',
-          value: String(decimals),
-          'aria-label': t('decimalsLabel'),
-          onChange: (event) => onDecimalsChange && onDecimalsChange(Number(event.target.value)),
-          style: {
-            height: 22, padding: '0 2px', borderRadius: 6,
-            border: `1px solid ${C.border1}`, background: C.layer2, color: C.label2,
-            fontSize: 10.5, fontVariantNumeric: 'tabular-nums', outline: 'none', cursor: 'pointer',
-          },
-        }, [0, 1, 2, 3, 4, 5, 6].map((n) => React.createElement('option', { key: n, value: String(n) }, String(n)))),
-        React.createElement('span', { key: 'u' }, t('decimalsUnit')),
-      ]),
-      React.createElement('label', {
-        key: 'turbo',
-        title: t('turboLabel'),
-        style: {
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-          fontSize: 10, padding: '1px 6px', borderRadius: 999,
-          border: `1px solid ${turbo ? `color-mix(in srgb, ${GOLD_TINT} 60%, ${C.border1})` : C.border1}`,
-          background: turbo ? `color-mix(in srgb, ${GOLD_TINT} 16%, transparent)` : 'transparent',
-          color: turbo ? C.label2 : C.label3, cursor: 'pointer', ...NUM,
-        },
-      }, [
-        React.createElement('input', {
-          key: 'i', type: 'checkbox', checked: turbo,
-          onChange: (event) => onTurboChange && onTurboChange(event.target.checked),
-          style: { accentColor: GOLD_TINT, width: 12, height: 12, margin: 0, cursor: 'inherit' },
-        }),
-        React.createElement('span', { key: 'l' }, t('turboLabel')),
-      ]),
     ]),
     React.createElement('div', {
       key: 'chips',
@@ -1193,6 +1164,7 @@ function NiumaPanel(props) {
   const t = props && typeof props.t === 'function' ? props.t : fallbackTranslate;
 
   const remote = useRemoteConfig();
+  const update = useUpdateInfo();
 
   // 服务端配置 -> 规范化配置；坏数据/缺字段一律退回 DEFAULTS（计算不会抛）。
   const cfg = React.useMemo(() => {
@@ -1354,6 +1326,7 @@ function NiumaPanel(props) {
   const onTurboChange = (checked) => postConfig({ turbo: Boolean(checked) });
 
   const holidaySource = (remote.data && remote.data.holidaySource) || HOLIDAY_SOURCE;
+  const versionText = (remote.data && remote.data.version) || (update.data && update.data.currentVersion) || '';
   const banner = remote.status === 'failed'
     ? {
       color: C.warn,
@@ -1420,7 +1393,7 @@ function NiumaPanel(props) {
         React.createElement('div', {
           key: 's',
           style: { fontSize: 11, color: C.label3, marginTop: 1 },
-        }, t('subtitle')),
+        }, versionText ? `${t('subtitle')} · v${versionText}` : t('subtitle')),
       ]),
       React.createElement(StatusBadge, { key: 'badge', t, status: snap.status }),
     ]),
@@ -1451,6 +1424,51 @@ function NiumaPanel(props) {
       ])
       : null,
 
+    // 版本 / 自动更新提示：已下载→提示重启；发现新版→一键更新
+    update.data && update.data.staged
+      ? React.createElement('div', {
+        key: 'update',
+        style: {
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          fontSize: 11.5, color: C.label2, padding: '6px 10px', borderRadius: 9,
+          border: `1px solid color-mix(in srgb, ${GOLD_TINT} 45%, transparent)`,
+          background: `color-mix(in srgb, ${GOLD_TINT} 10%, transparent)`,
+        },
+      }, [
+        React.createElement('span', { key: 'dot', 'aria-hidden': 'true', style: { width: 6, height: 6, borderRadius: '50%', background: GOLD_TINT } }),
+        React.createElement('span', { key: 'txt', style: { flex: '1 1 160px' } },
+          t('updateStaged').replace('{version}', String(update.data.stagedVersion || update.data.latestVersion || ''))),
+      ])
+      : update.status === 'updating'
+        ? React.createElement('div', {
+          key: 'update',
+          style: { fontSize: 11.5, color: C.label3, padding: '2px 2px' },
+        }, t('updating'))
+        : update.data && update.data.hasUpdate
+          ? React.createElement('div', {
+            key: 'update',
+            style: {
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+              fontSize: 11.5, color: C.label2, padding: '6px 10px', borderRadius: 9,
+              border: `1px solid color-mix(in srgb, ${GOLD_TINT} 45%, transparent)`,
+              background: `color-mix(in srgb, ${GOLD_TINT} 10%, transparent)`,
+            },
+          }, [
+            React.createElement('span', { key: 'txt', style: { flex: '1 1 160px' } },
+              t('updateAvailable').replace('{version}', String(update.data.latestVersion || ''))),
+            React.createElement('button', {
+              key: 'go',
+              type: 'button',
+              onClick: update.download,
+              style: {
+                border: `1px solid color-mix(in srgb, ${GOLD_TINT} 70%, rgba(0,0,0,.15))`,
+                color: '#3A2A05',
+                background: 'linear-gradient(180deg, #F8DC86 0%, #EFC258 52%, #D99D2C 100%)',
+                borderRadius: 7, padding: '3px 12px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+              },
+            }, t('updateNow')),
+          ])
+          : null,
     React.createElement(HeroCard, { key: 'hero', t, snap, decimals: cfg.decimals, onDecimalsChange, turbo: cfg.turbo, onTurboChange }),
     React.createElement(CountdownRow, { key: 'countdown', t, snap }),
     React.createElement('div', {

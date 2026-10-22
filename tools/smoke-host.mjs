@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { DEFAULTS } from '../src/core.mjs';
 import { HOLIDAY_SOURCE } from '../src/holidays.mjs';
 
+process.env.NIUMA_UPDATE_DISABLED = '1';
 const TARGET = new URL('../lib/index.js', import.meta.url).href;
 const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -222,11 +223,11 @@ try {
   const main = newCtx();
   await mod.apply(main.ctx, baseConfig);
 
-  check('apply 后注册 3 条路由', main.routes.length === 3, `实际 ${main.routes.length}`);
+  check('apply 后注册 4 条路由', main.routes.length === 4, `实际 ${main.routes.length}`);
   const routePaths = main.routes.map((route) => route.path).sort();
   check(
     '路由路径精确匹配 SPEC §5',
-    deepEqual(routePaths, ['/niuma/config', '/niuma/health', '/niuma/settings']),
+    deepEqual(routePaths, ['/niuma/config', '/niuma/health', '/niuma/settings', '/niuma/update']),
     routePaths.join(', '),
   );
   check('全部 kind === "exact"', main.routes.every((route) => route.kind === 'exact'));
@@ -280,6 +281,21 @@ try {
   check('data.version 来自 package.json', healthPayload?.data?.version === PKG.version, `${healthPayload?.data?.version} vs ${PKG.version}`);
   check('data.aliveAt 是合法时间戳', typeof healthPayload?.data?.aliveAt === 'string' && !Number.isNaN(Date.parse(healthPayload.data.aliveAt)), String(healthPayload?.data?.aliveAt));
   check('data 只含 name/version/aliveAt', deepEqual(Object.keys(healthPayload?.data ?? {}).sort(), ['aliveAt', 'name', 'version']));
+
+  /* ---------------- 3.5 版本 / 自动更新 ---------------- */
+  section('3.5 GET/POST /niuma/update（版本号 + 自动更新状态）');
+  const updateRes = await invoke(main.routes, '/niuma/update', { method: 'GET', url: '/niuma/update' });
+  const updatePayload = parseJson(updateRes);
+  check('GET /niuma/update 200', updateRes.status === 200, String(updateRes.status));
+  check('返回当前版本号', updatePayload?.data?.currentVersion === PKG.version, `${updatePayload?.data?.currentVersion} vs ${PKG.version}`);
+  check('仓库内是 dev checkout（不自动覆盖）', updatePayload?.data?.dev === true);
+  check('NIUMA_UPDATE_DISABLED=1 时标记 disabled', updatePayload?.data?.disabled === true);
+  check('没有谎报有更新', updatePayload?.data?.hasUpdate === false);
+  const updatePost = await invoke(main.routes, '/niuma/update', { method: 'POST', url: '/niuma/update' });
+  const updatePostPayload = parseJson(updatePost);
+  check('POST /niuma/update 200（dev/disabled 时直接返回状态，不下载）', updatePost.status === 200 && updatePostPayload?.ok === true);
+  const update405 = await invoke(main.routes, '/niuma/update', { method: 'PUT', url: '/niuma/update' });
+  check('PUT /niuma/update -> 405 且 allow 含 GET, POST', update405.status === 405 && /GET/.test(String(update405.headers.allow)) && /POST/.test(String(update405.headers.allow)), `${update405.status} ${update405.headers.allow}`);
 
   /* ---------------- 4. POST /niuma/settings（成功路径 + JSON 文件持久化） ---------------- */
   section('4. POST /niuma/settings（合法写入 + JSON 文件持久化）');
@@ -394,7 +410,7 @@ try {
   section('7. 鉴权守卫：connection.requestRejection 拒绝时 handler 不执行');
   const guardedCtx = newCtx({ connection: { requestRejection: () => 403 } });
   await mod.apply(guardedCtx.ctx, {});
-  check('守卫场景仍注册 3 条路由', guardedCtx.routes.length === 3);
+  check('守卫场景仍注册 4 条路由', guardedCtx.routes.length === 4);
   const guardedCases = [
     ['/niuma/config', 'GET'],
     ['/niuma/settings', 'POST'],
@@ -444,7 +460,7 @@ try {
     console.error(error);
   }
   check('配置文件不可写时 apply 不抛错', brokenStoreThrew === false);
-  check('仍注册 3 条路由', brokenStore.routes.length === 3, `实际 ${brokenStore.routes.length}`);
+  check('仍注册 4 条路由', brokenStore.routes.length === 4, `实际 ${brokenStore.routes.length}`);
   const degradedConfig = parseJson(await invoke(brokenStore.routes, '/niuma/config', { method: 'GET', url: '/niuma/config' }));
   check('GET /niuma/config 仍返回默认配置', degradedConfig?.ok === true && degradedConfig?.data?.config?.monthlySalary === DEFAULTS.monthlySalary);
   const degradedWrite = await invoke(brokenStore.routes, '/niuma/settings', {

@@ -144,7 +144,10 @@ function buildHtml(reactUmd, reactDomUmd, bundle, expand, initialView, dshViewpo
   window.fetch = async (url) => {
     const path = String(url);
     if (path === '/niuma/config' || path.endsWith('/niuma/config')) {
-      return { ok: true, status: 200, json: async () => ({ ok: true, data: { config: FIXTURE, defaults: FIXTURE, holidaySource: { year: 2026, title: '国务院办公厅关于2026年部分节假日安排的通知（国办发明电〔2025〕7号）', url: 'https://www.gov.cn/zhengce/content/202511/content_7047090.htm' } } }) };
+      return { ok: true, status: 200, json: async () => ({ ok: true, data: { config: FIXTURE, defaults: FIXTURE, version: '0.2.3', holidaySource: { year: 2026, title: '国务院办公厅关于2026年部分节假日安排的通知（国办发明电〔2025〕7号）', url: 'https://www.gov.cn/zhengce/content/202511/content_7047090.htm' } } }) };
+    }
+    if (path === '/niuma/update' || path.endsWith('/niuma/update')) {
+      return { ok: true, status: 200, json: async () => ({ ok: true, data: { currentVersion: '0.2.3', latestVersion: '0.2.3', hasUpdate: false, staged: false, dev: true, disabled: false, autoUpdate: true } }) };
     }
     if (path === '/niuma/settings' || path.endsWith('/niuma/settings')) {
       return { ok: true, status: 200, json: async () => ({ ok: true, data: { config: FIXTURE } }) };
