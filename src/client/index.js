@@ -1393,7 +1393,7 @@ function NiumaPanel(props) {
         React.createElement('div', {
           key: 's',
           style: { fontSize: 11, color: C.label3, marginTop: 1 },
-        }, versionText ? `${t('subtitle')} · v${versionText}` : t('subtitle')),
+        }, t('subtitle')),
       ]),
       React.createElement(StatusBadge, { key: 'badge', t, status: snap.status }),
     ]),
@@ -1530,6 +1530,20 @@ function NiumaPanel(props) {
       save,
       onSave,
     }),
+    // 版本信息固定放在面板最底部
+    React.createElement('div', {
+      key: 'version',
+      style: {
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        padding: '4px 0 0', fontSize: 10.5, color: C.label3, ...NUM,
+      },
+    }, [
+      versionText ? React.createElement('span', { key: 'v' }, `牛马加速器 v${versionText}`) : null,
+      update.data && update.data.staged
+        ? React.createElement('span', { key: 's', style: { color: C.label3 } },
+          `· ${t('updateStaged').replace('{version}', String(update.data.stagedVersion || update.data.latestVersion || ''))}`)
+        : null,
+    ]),
     ]),
   ]);
 }
